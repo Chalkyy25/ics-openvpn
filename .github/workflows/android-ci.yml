@@ -9,9 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     env:
-      # Adjust these to your project if needed
       GRADLE_OPTS: -Dorg.gradle.daemon=false -Dkotlin.daemon.useFallbackStrategy=auto
       JAVA_TOOL_OPTIONS: -Xms512m -Xmx3g
 
@@ -26,29 +24,27 @@ jobs:
           java-version: "17"
           cache: gradle
 
-      # Install Android SDK + packages (build-tools, platform, NDK & CMake for native/openssl)
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: |
-            platform-tools
-            build-tools;34.0.0
-            platforms;android-34
-            ndk;25.2.9519653
-            cmake;3.22.1
+      # ---- Use sdkmanager directly (reliable) ----
+      - name: Accept Android licenses
+        run: yes | sdkmanager --licenses
 
-      # Ensure gradlew is executable (if gradle wrapper is present)
+      - name: Install SDK packages
+        run: |
+          sdkmanager "platform-tools" \
+                     "build-tools;34.0.0" \
+                     "platforms;android-34" \
+                     "ndk;25.2.9519653" \
+                     "cmake;3.22.1"
+
       - name: Make gradlew executable
         run: |
           if [ -f ./gradlew ]; then chmod +x ./gradlew; fi
 
-      # ---------- DEBUG BUILD (no signing) ----------
-      # If your root project builds everything, keep assembleDebug.
-      # If not, target the right module, e.g. ":main:assembleDebug" or ":app:assembleDebug".
       - name: Build Debug APK
         run: |
           if [ -f ./gradlew ]; then
-            ./gradlew --no-daemon assembleDebug
+            # Change :main:assembleDebug to your launcher module if different (e.g. :app:)
+            ./gradlew --no-daemon :main:assembleDebug || ./gradlew --no-daemon assembleDebug
           else
             echo "No gradle wrapper found. Please add Gradle wrapper to the repo." && exit 1
           fi
