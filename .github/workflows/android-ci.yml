@@ -1,0 +1,94 @@
+name: Android CI (APK)
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      # Adjust these to your project if needed
+      GRADLE_OPTS: -Dorg.gradle.daemon=false -Dkotlin.daemon.useFallbackStrategy=auto
+      JAVA_TOOL_OPTIONS: -Xms512m -Xmx3g
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      # Install Android SDK + packages (build-tools, platform, NDK & CMake for native/openssl)
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            platform-tools
+            build-tools;35.0.0
+            platforms;android-35
+            ndk;26.3.11579264
+            cmake;3.22.1
+
+      # Ensure gradlew is executable (if gradle wrapper is present)
+      - name: Make gradlew executable
+        run: |
+          if [ -f ./gradlew ]; then chmod +x ./gradlew; fi
+
+      # ---------- DEBUG BUILD (no signing) ----------
+      # If your root project builds everything, keep assembleDebug.
+      # If not, target the right module, e.g. ":main:assembleDebug" or ":app:assembleDebug".
+      - name: Build Debug APK
+        run: |
+          if [ -f ./gradlew ]; then
+            ./gradlew --no-daemon assembleDebug
+          else
+            echo "No gradle wrapper found. Please add Gradle wrapper to the repo." && exit 1
+          fi
+
+      - name: Upload Debug APK(s)
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-debug
+          path: |
+            **/build/outputs/apk/**/debug/*.apk
+            **/outputs/apk/**/debug/*.apk
+          if-no-files-found: warn
+
+      # ---------- OPTIONAL: SIGNED RELEASE BUILD ----------
+      # 1) Add these repo secrets: ANDROID_KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
+      # 2) Uncomment this whole block + make sure your Gradle signingConfigs use these env vars.
+      #
+      # - name: Decode keystore from secret
+      #   if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+      #   run: |
+      #     echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > $HOME/android_keystore.jks
+      #   env:
+      #     ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      #
+      # - name: Build Release (signed)
+      #   if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+      #   env:
+      #     KEYSTORE_FILE: ${{ env.HOME }}/android_keystore.jks
+      #     KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      #     KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      #     KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      #   run: |
+      #     ./gradlew --no-daemon assembleRelease
+      #
+      # - name: Upload Release APK(s)/AAB(s)
+      #   if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: apk-release
+      #     path: |
+      #       **/build/outputs/apk/**/release/*.apk
+      #       **/build/outputs/bundle/**/release/*.aab
+      #     if-no-files-found: warn
