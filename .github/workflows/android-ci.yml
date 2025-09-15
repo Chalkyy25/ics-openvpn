@@ -13,6 +13,7 @@ jobs:
     env:
       GRADLE_OPTS: -Dorg.gradle.daemon=false -Dkotlin.daemon.useFallbackStrategy=auto
       JAVA_TOOL_OPTIONS: -Xms512m -Xmx3g
+      ANDROID_HOME: ${{ github.workspace }}/android-sdk
 
     steps:
       - name: Checkout
@@ -25,16 +26,26 @@ jobs:
           java-version: "17"
           cache: gradle
 
-      # ---------- Android SDK (keep exact indentation) ----------
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: |
-            platform-tools
-            build-tools;34.0.0
-            platforms;android-34
-            ndk;25.2.9519653
-            cmake;3.22.1
+      # --- Install Android Command-line Tools ---
+      - name: Install Android cmdline-tools
+        run: |
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          cd $ANDROID_HOME/cmdline-tools
+          curl -fo tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q tools.zip -d latest
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+
+      - name: Accept licenses
+        run: yes | sdkmanager --licenses
+
+      - name: Install SDK packages
+        run: |
+          sdkmanager "platform-tools" \
+                     "build-tools;34.0.0" \
+                     "platforms;android-34" \
+                     "ndk;25.2.9519653" \
+                     "cmake;3.22.1"
 
       - name: Make gradlew executable
         run: |
@@ -43,7 +54,6 @@ jobs:
       - name: Build Debug APK
         run: |
           if [ -f ./gradlew ]; then
-            # Try launcher module first; fall back to root
             ./gradlew --no-daemon :main:assembleDebug || ./gradlew --no-daemon assembleDebug
           else
             echo "No gradle wrapper found. Please add Gradle wrapper to the repo." && exit 1
