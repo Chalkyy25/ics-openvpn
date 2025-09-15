@@ -260,6 +260,8 @@ dependencies {
     testImplementation(libs.kotlin)
     testImplementation(libs.mockito.core)
     testImplementation(libs.robolectric)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("org.json:json:20240303")
 }
 
 fun DependencyHandler.uiImplementation(dependencyNotation: Any): Dependency? =
