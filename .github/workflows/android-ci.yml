@@ -10,13 +10,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
+      # More heap for all Java tools (Gradle, AAPT2, D8)
+      JAVA_TOOL_OPTIONS: -Xms512m -Xmx5g
       GRADLE_OPTS: -Dorg.gradle.daemon=false -Dkotlin.daemon.useFallbackStrategy=auto
-      JAVA_TOOL_OPTIONS: -Xms512m -Xmx3g
       ANDROID_HOME: ${{ github.workspace }}/android-sdk
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
 
     steps:
-      # Pull repo + submodules (needed for openvpn3 sources)
+      # Pull repo + submodules (OpenVPN3 JNI sources)
       - name: Checkout (with submodules)
         uses: actions/checkout@v4
         with:
@@ -30,13 +31,26 @@ jobs:
           java-version: "17"
           cache: gradle
 
-      # Host build deps (SWIG used by the OpenVPN3 JNI generation)
+      # Host deps needed by OpenVPN3 build
       - name: Install host build deps
         run: |
           sudo apt-get update
           sudo apt-get install -y swig
 
-      # --- Install Android command-line tools (puts sdkmanager in PATH) ---
+      # Make Gradle conservative on memory/parallelism
+      - name: Configure Gradle memory
+        run: |
+          mkdir -p ~/.gradle
+          cat > ~/.gradle/gradle.properties << 'EOF'
+          org.gradle.jvmargs=-Xmx5g -Xms512m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8 -XX:+HeapDumpOnOutOfMemoryError
+          org.gradle.daemon=false
+          org.gradle.parallel=false
+          org.gradle.configureondemand=true
+          org.gradle.workers.max=1
+          android.useAndroidX=true
+          EOF
+
+      # --- Android SDK cmdline-tools ---
       - name: Install Android cmdline-tools
         run: |
           set -euxo pipefail
@@ -50,13 +64,11 @@ jobs:
 
       - name: Accept licenses
         run: |
-          set -e
           export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
           yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses
 
       - name: Install SDK packages
         run: |
-          set -e
           export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
           sdkmanager --sdk_root="$ANDROID_HOME" \
             "platform-tools" \
@@ -75,20 +87,14 @@ jobs:
           echo "==========================="
 
       - name: Make gradlew executable
-        run: |
-          if [ -f ./gradlew ]; then chmod +x ./gradlew; fi
+        run: if [ -f ./gradlew ]; then chmod +x ./gradlew; fi
 
-      - name: Build Debug APK
+      # Build ONLY the :main module to avoid pulling sample modules into the task graph
+      - name: Build Debug APK (:main only)
         run: |
           set -e
-          if [ -f ./gradlew ]; then
-            # Try common launcher modules in order
-            ./gradlew --no-daemon :main:assembleDebug \
-              || ./gradlew --no-daemon :app:assembleDebug \
-              || ./gradlew --no-daemon assembleDebug
-          else
-            echo "No gradle wrapper found. Please add Gradle wrapper to the repo." && exit 1
-          fi
+          ./gradlew -Dorg.gradle.jvmargs="-Xmx5g -Xms512m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8" \
+                    --no-daemon :main:assembleDebug
 
       - name: Upload Debug APK(s)
         uses: actions/upload-artifact@v4
