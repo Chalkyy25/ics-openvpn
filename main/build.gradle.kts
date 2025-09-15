@@ -24,6 +24,7 @@ android {
     ndkVersion = "28.0.13004108"
 
     defaultConfig {
+	applicationId = "uk.co.aiovpn.app"
         minSdk = 21
         targetSdk = 35
         //targetSdkPreview = "UpsideDownCake"
