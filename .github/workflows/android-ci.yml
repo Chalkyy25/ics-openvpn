@@ -2,22 +2,21 @@ name: Android CI (APK)
 
 on:
   push:
-    branches: [ "**" ]
+    branches: [ "master" ]
   pull_request:
+    branches: [ "master" ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      # More heap for all Java tools (Gradle, AAPT2, D8)
       JAVA_TOOL_OPTIONS: -Xms512m -Xmx5g
       GRADLE_OPTS: -Dorg.gradle.daemon=false -Dkotlin.daemon.useFallbackStrategy=auto
       ANDROID_HOME: ${{ github.workspace }}/android-sdk
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
 
     steps:
-      # Pull repo + submodules (OpenVPN3 JNI sources)
       - name: Checkout (with submodules)
         uses: actions/checkout@v4
         with:
@@ -31,13 +30,11 @@ jobs:
           java-version: "17"
           cache: gradle
 
-      # Host deps needed by OpenVPN3 build
       - name: Install host build deps
         run: |
           sudo apt-get update
           sudo apt-get install -y swig
 
-      # Make Gradle conservative on memory/parallelism
       - name: Configure Gradle memory
         run: |
           mkdir -p ~/.gradle
@@ -50,7 +47,6 @@ jobs:
           android.useAndroidX=true
           EOF
 
-      # --- Android SDK cmdline-tools ---
       - name: Install Android cmdline-tools
         run: |
           set -euxo pipefail
@@ -80,27 +76,24 @@ jobs:
             "cmake;3.22.1" \
             "cmake;3.10.2.4988404"
 
-      - name: Show modules (for debugging)
-        run: |
-          echo "===== settings.gradle ====="
-          cat settings.gradle || true
-          echo "==========================="
-
       - name: Make gradlew executable
         run: if [ -f ./gradlew ]; then chmod +x ./gradlew; fi
 
-      # Build ONLY the :main module to avoid pulling sample modules into the task graph
       - name: Build Debug APK (:main only)
         run: |
-          set -e
-          ./gradlew -Dorg.gradle.jvmargs="-Xmx5g -Xms512m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8" \
-                    --no-daemon :main:assembleDebug
+          ./gradlew --no-daemon :main:assembleDebug
 
-      - name: Upload Debug APK(s)
+      # Pick the universal APK (or biggest) and upload a single file
+      - name: Pick APK (universal or largest)
+        run: |
+          set -e
+          APK=$(find . -type f -name "*-universal-debug.apk" | head -n 1)
+          if [ -z "$APK" ]; then APK=$(ls -S $(find . -type f -name "*.apk") | head -n 1); fi
+          cp "$APK" AIOVPN-debug.apk
+          echo "Picked: $APK"
+
+      - name: Upload single APK
         uses: actions/upload-artifact@v4
         with:
-          name: apk-debug
-          path: |
-            **/build/outputs/apk/**/debug/*.apk
-            **/outputs/apk/**/debug/*.apk
-          if-no-files-found: warn
+          name: AIOVPN-debug
+          path: AIOVPN-debug.apk
