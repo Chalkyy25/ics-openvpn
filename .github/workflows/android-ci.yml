@@ -9,11 +9,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     env:
       GRADLE_OPTS: -Dorg.gradle.daemon=false -Dkotlin.daemon.useFallbackStrategy=auto
       JAVA_TOOL_OPTIONS: -Xms512m -Xmx3g
       ANDROID_HOME: ${{ github.workspace }}/android-sdk
+      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
 
     steps:
       - name: Checkout
@@ -26,29 +26,35 @@ jobs:
           java-version: "17"
           cache: gradle
 
-      # --- Install Android Command-line Tools ---
+      # --- Install Android command-line tools (correct path layout) ---
       - name: Install Android cmdline-tools
         run: |
-          mkdir -p $ANDROID_HOME/cmdline-tools
-          cd $ANDROID_HOME/cmdline-tools
-          curl -fo tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip -q tools.zip -d latest
-          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
-          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+          set -euxo pipefail
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          cd "$ANDROID_HOME/cmdline-tools"
+          curl -sSfLo tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q tools.zip
+          # Zip extracts to ./cmdline-tools/*  -> move to ./latest/
+          mv cmdline-tools latest
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$ANDROID_HOME/platform-tools"           >> "$GITHUB_PATH"
 
       - name: Accept licenses
         run: |
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
-          yes | sdkmanager --licenses
+          set -e
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
+          yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses
 
       - name: Install SDK packages
         run: |
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
-          sdkmanager "platform-tools" \
-                     "build-tools;34.0.0" \
-                     "platforms;android-34" \
-                     "ndk;25.2.9519653" \
-                     "cmake;3.22.1"
+          set -e
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
+          sdkmanager --sdk_root="$ANDROID_HOME" \
+            "platform-tools" \
+            "build-tools;34.0.0" \
+            "platforms;android-34" \
+            "ndk;25.2.9519653" \
+            "cmake;3.22.1"
 
       - name: Make gradlew executable
         run: |
@@ -57,7 +63,8 @@ jobs:
       - name: Build Debug APK
         run: |
           if [ -f ./gradlew ]; then
-            ./gradlew --no-daemon :main:assembleDebug || ./gradlew --no-daemon assembleDebug
+            # Try your launcher module first; fall back to root if unknown
+            ./gradlew --no-daemon :main:assembleDebug || ./gradlew --no-daemon :app:assembleDebug || ./gradlew --no-daemon assembleDebug
           else
             echo "No gradle wrapper found. Please add Gradle wrapper to the repo." && exit 1
           fi
