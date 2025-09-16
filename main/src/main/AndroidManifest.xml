@@ -17,6 +17,13 @@
 
 
     <application
+        <activity android:name="de.blinkt.openvpn.ui.LoginActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity android:name="de.blinkt.openvpn.ui.ServerPickerActivity"/>
         android:name=".core.ICSOpenVPNApplication"
         android:allowBackup="true"
         android:appCategory="productivity"
