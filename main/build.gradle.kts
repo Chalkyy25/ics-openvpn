@@ -24,6 +24,7 @@ android {
     ndkVersion = "28.0.13004108"
 
     defaultConfig {
+	applicationId = "uk.co.aiovpn.app"
         minSdk = 21
         targetSdk = 35
         //targetSdkPreview = "UpsideDownCake"
@@ -231,6 +232,9 @@ android.applicationVariants.all(object : Action<ApplicationVariant> {
 
 
 dependencies {
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     // https://maven.google.com/web/index.html
     implementation(libs.androidx.annotation)
     implementation(libs.androidx.core.ktx)
@@ -259,6 +263,8 @@ dependencies {
     testImplementation(libs.kotlin)
     testImplementation(libs.mockito.core)
     testImplementation(libs.robolectric)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("org.json:json:20240303")
 }
 
 fun DependencyHandler.uiImplementation(dependencyNotation: Any): Dependency? =
