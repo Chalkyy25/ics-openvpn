@@ -7,6 +7,11 @@ on:
     branches: [ "master" ]
   workflow_dispatch:
 
+# Avoid running multiple builds for the same ref
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -16,6 +21,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: true
+          fetch-depth: 0
 
       # ---------- CACHES ----------
       - name: Cache Gradle
@@ -34,7 +40,7 @@ jobs:
           path: |
             ~/.android
             /usr/local/lib/android/sdk
-          key: ${{ runner.os }}-android-${{ hashFiles('**/build.gradle*') }}
+          key: ${{ runner.os }}-android-${{ hashFiles('**/build.gradle*', '.github/workflows/android-ci.yml') }}
           restore-keys: |
             ${{ runner.os }}-android-
       # ---------------------------
@@ -44,24 +50,26 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-
-      - name: Install host build deps
-        run: sudo apt-get update && sudo apt-get install -y libc6 libstdc++6
+          cache: gradle
 
       - name: Install Android cmdline-tools
         uses: android-actions/setup-android@v3
 
-      - name: Accept licenses
+      - name: Accept Android licenses
         run: yes | sdkmanager --licenses || true
 
       - name: Make gradlew executable
         run: chmod +x gradlew
 
-      - name: Build Debug APK (:main only)
-        run: ./gradlew :main:assembleDebug --build-cache
+      # Build ONLY the UI + ovpn23 flavor; Gradle build cache enabled
+      - name: Build Debug APK (UiOvpn23 only)
+        run: |
+          ./gradlew :main:assembleUiOvpn23Debug \
+            --no-daemon --build-cache \
+            -Dorg.gradle.caching=true
 
-      - name: Upload Debug APK(s)
+      - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: debug-apk
-          path: main/build/outputs/apk/debug/*.apk
+          name: AIOVPN-UiOvpn23-Debug
+          path: main/build/outputs/apk/uiOvpn23/debug/*.apk
