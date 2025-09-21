@@ -17,7 +17,7 @@
 
 
     <application
-        <activity android:name="de.blinkt.openvpn.ui.LoginActivity">
+        <activity android:name="uk.co.aiovpn.app.ui.LoginActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
