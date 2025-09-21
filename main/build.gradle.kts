@@ -12,6 +12,7 @@ plugins {
 }
 
 android {
+    variantFilter { if (flavors.any { it.name == "skeleton" }) setIgnore(true) }
     buildFeatures {
         aidl = true
         buildConfig = true
