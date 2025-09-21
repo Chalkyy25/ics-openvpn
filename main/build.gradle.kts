@@ -13,6 +13,15 @@ plugins {
 
 android {
     splits {
+        abi {
+            isEnable = false
+            isUniversalApk = true
+        }
+        density {
+            isEnable = false
+        }
+    }
+    splits {
         abi { isEnable = false }
         density { isEnable = false }
         language { isEnable = false }
