@@ -24,8 +24,6 @@ android {
     splits {
         abi { isEnable = false }
         density { isEnable = false }
-        language { isEnable = false }
-    }
     variantFilter { if (flavors.any { it.name == "skeleton" }) ignore = true }
     buildFeatures {
         aidl = true
