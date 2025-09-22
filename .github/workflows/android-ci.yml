@@ -64,7 +64,7 @@ jobs:
       # Build ONLY the UI + ovpn23 flavor; Gradle build cache enabled
       - name: Build Debug APK (UiOvpn23 only)
         run: |
-          ./gradlew :main:assembleUiOvpn23Debug \
+          ./gradlew :main:assembleUiOvpn23Debug \ -Dorg.gradle.configuration-cache=false --no-configuration-cache
             --no-daemon --build-cache \
             -Dorg.gradle.caching=true
 
