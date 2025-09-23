@@ -65,7 +65,7 @@ jobs:
 
       - name: Build Debug APK (UiOvpn23 only, verbose)
         run: |
-          ./gradlew :main:assembleUiOvpn23Debug \
+          ./gradlew :main:assembleXuiOvpn23Debug \
             --no-daemon --no-configuration-cache --build-cache -Dorg.gradle.caching=true \
             --stacktrace --info
 
@@ -85,4 +85,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AIOVPN-UiOvpn23-Debug
-          path: main/build/outputs/apk/uiOvpn23/debug/*.apk
+          path: main/build/outputs/apk/xuiOvpn23/debug/*.apk
