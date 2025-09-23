@@ -54,7 +54,7 @@ android {
         getByName("main") {
             assets.srcDirs("src/main/assets", "build/ovpnassets")
         }
-        create("ui") { }
+        create("xui") { }
         create("skeleton") { }
         getByName("debug") { }
         getByName("release") { }
@@ -108,7 +108,7 @@ android {
     flavorDimensions += listOf("implementation", "ovpnimpl")
 
     productFlavors {
-        create("ui") {
+        create("xui") {
             dimension = "implementation"
         }
         create("skeleton") {
