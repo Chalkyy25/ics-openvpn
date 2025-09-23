@@ -14,7 +14,7 @@ android {
     ndkVersion = "28.0.13004108"
 
     defaultConfig {
-        applicationId = "uk.co.aiovpn.app"
+        applicationId = "uk.co.aiovpn.app"   // AIO VPN package id
         minSdk = 21
         targetSdk = 35
         versionCode = 216
@@ -30,22 +30,18 @@ android {
         buildConfig = true
     }
 
-    // Disable unwanted APK splits by default
+    // Keep splits off to produce a single universal APK in CI
     splits {
         abi {
             isEnable = false
             isUniversalApk = true
         }
-        density {
-            isEnable = false
-        }
+        density { isEnable = false }
     }
 
-    // (Optional) If you ever build App Bundles, don’t split by language
+    // If you build App Bundles later, don’t split by language
     bundle {
-        language {
-            enableSplit = false
-        }
+        language { enableSplit = false }
     }
 
     externalNativeBuild {
@@ -101,7 +97,10 @@ android {
     }
 
     lint {
-        enable += setOf("BackButton", "EasterEgg", "StopShip", "IconExpectedSize", "GradleDynamicVersion", "NewerVersionAvailable")
+        enable += setOf(
+            "BackButton", "EasterEgg", "StopShip",
+            "IconExpectedSize", "GradleDynamicVersion", "NewerVersionAvailable"
+        )
         checkOnly += setOf("ImpliedQuantity", "MissingQuantity")
         disable += setOf("MissingTranslation", "UnsafeNativeCodeLocation")
     }
@@ -126,7 +125,7 @@ android {
         }
     }
 
-    // Skip building the skeleton flavor in CI (and locally unless you explicitly ask for it)
+    // Skip building the skeleton flavor (keeps CI fast & avoids its errors)
     @Suppress("DEPRECATION")
     variantFilter {
         if (flavors.any { it.name == "skeleton" }) {
@@ -146,22 +145,26 @@ android {
         }
     }
 
-    // If you later want ABI splits, re-enable here
-    // (kept off to keep the CI artifact simple)
-    /*
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("x86", "x86_64", "armeabi-v7a", "arm64-v8a")
-            isUniversalApk = true
-        }
-    }
-    */
-
     packaging {
         jniLibs {
             useLegacyPackaging = true
+        }
+        resources {
+            // Prevent META-INF duplicate clashes during packaging
+            excludes += setOf(
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE",
+                "META-INF/LICENSE.txt",
+                "META-INF/NOTICE",
+                "META-INF/NOTICE.txt",
+                "META-INF/LICENSE*",
+                "META-INF/AL2.0",
+                "META-INF/LGPL2.1",
+                "META-INF/*.kotlin_module",
+                "META-INF/kotlin-tooling-metadata.json",
+                "META-INF/*.version",
+                "META-INF/gradle/incremental.annotation.processors"
+            )
         }
     }
 
@@ -195,7 +198,7 @@ android {
     kotlinOptions { jvmTarget = "17" }
 }
 
-// --- SWIG/OpenVPN3 codegen (legacy but still works) ---
+/* ----- SWIG / OpenVPN3 codegen integration (unchanged logic) ----- */
 var swigcmd = "swig"
 if (file("/opt/homebrew/bin/swig").exists())
     swigcmd = "/opt/homebrew/bin/swig"
@@ -234,7 +237,7 @@ android.applicationVariants.all(object : Action<ApplicationVariant> {
 })
 
 dependencies {
-    // Networking (your additions)
+    // Networking (panel login + HTTP)
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
@@ -261,7 +264,7 @@ dependencies {
     // Kotlin stdlib (from versions catalog)
     implementation(libs.kotlin)
 
-    // Charts & HTTP (from catalog)
+    // Charts & extra HTTP (from versions catalog if used)
     implementation(libs.mpandroidchart)
     implementation(libs.square.okhttp)
 
