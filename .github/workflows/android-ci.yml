@@ -22,6 +22,7 @@ jobs:
           submodules: true
           fetch-depth: 0
 
+      # ---------- CACHES ----------
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
@@ -41,6 +42,7 @@ jobs:
           key: ${{ runner.os }}-android-${{ hashFiles('**/build.gradle*', '.github/workflows/android-ci.yml') }}
           restore-keys: |
             ${{ runner.os }}-android-
+      # ---------------------------
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -55,18 +57,17 @@ jobs:
       - name: Accept Android licenses
         run: yes | sdkmanager --licenses || true
 
-      - name: Enable AndroidX in gradle.properties
-        run: |
-          echo "android.useAndroidX=true" >> gradle.properties
-          echo "android.enableJetifier=true" >> gradle.properties
-
       - name: Make gradlew executable
         run: chmod +x gradlew
 
-      - name: Build Debug APK (UiOvpn23 only, verbose)
+      - name: Build Debug APK (XuiOvpn23)
+        env:
+          # Extra heap to avoid OOM during packaging
+          GRADLE_OPTS: "-Xmx3g -Dfile.encoding=UTF-8 -XX:+HeapDumpOnOutOfMemoryError"
         run: |
           ./gradlew :main:assembleXuiOvpn23Debug \
-            --no-daemon --no-configuration-cache --build-cache -Dorg.gradle.caching=true \
+            --no-daemon --no-configuration-cache --build-cache \
+            -Dorg.gradle.caching=true \
             --stacktrace --info
 
       # Always upload reports and any produced APKs (even on failure)
@@ -80,9 +81,9 @@ jobs:
             main/build/reports/**
             main/build/outputs/**
 
-      - name: Upload Debug APK (if present)
+      - name: Upload Debug APK
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: AIOVPN-UiOvpn23-Debug
+          name: AIOVPN-XuiOvpn23-Debug
           path: main/build/outputs/apk/xuiOvpn23/debug/*.apk
