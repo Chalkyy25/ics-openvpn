@@ -51,8 +51,6 @@ public class LoginActivity extends Activity {
                     Prefs.saveAuth(LoginActivity.this, resp.body().token, userId);
                     startActivity(new Intent(LoginActivity.this, MainActivity.class));
                     finish();
-                    startActivity(new Intent(LoginActivity.this, MainActivity.class));
-                    finish();
                     Toast.makeText(LoginActivity.this, "Logged in", Toast.LENGTH_SHORT).show();
                 } else {
                     Toast.makeText(LoginActivity.this, "Login failed", Toast.LENGTH_SHORT).show();
