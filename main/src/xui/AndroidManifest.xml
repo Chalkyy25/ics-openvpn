@@ -2,13 +2,13 @@
           xmlns:tools="http://schemas.android.com/tools">
 
     <application
-        tools:replace="android:label">
+        tools:replace="android:label, android:icon, android:roundIcon">
 
-        <!-- Force LoginActivity as the only launcher -->
+        <!-- Make LoginActivity the ONLY launcher -->
         <activity
             android:name="de.blinkt.openvpn.ui.LoginActivity"
             android:exported="true"
-            tools:node="replace">
+            tools:node="merge">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -21,11 +21,16 @@
             tools:node="merge">
             <intent-filter tools:node="remove">
                 <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+
+        <!-- Avoid duplicate alias/exported conflicts -->
+        <activity-alias
+            android:name=".activities.ConfigConverterFile"
+            tools:replace="android:exported android:targetActivity" />
 
     </application>
 </manifest>

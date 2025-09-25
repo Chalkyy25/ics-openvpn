@@ -22,7 +22,7 @@ jobs:
           submodules: true
           fetch-depth: 0
 
-      # ---------- CACHES ----------
+      # Gradle cache only (keep this)
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
@@ -33,16 +33,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: Cache Android SDK
+      # DO NOT cache /usr/local/lib/android/sdk (causes permission errors)
+      # Keep a tiny cache for ~/.android if you like
+      - name: Cache ~/.android (licenses only)
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.android
-            /usr/local/lib/android/sdk
-          key: ${{ runner.os }}-android-${{ hashFiles('**/build.gradle*', '.github/workflows/android-ci.yml') }}
+          path: ~/.android
+          key: ${{ runner.os }}-android-licenses-${{ hashFiles('**/build.gradle*') }}
           restore-keys: |
-            ${{ runner.os }}-android-
-      # ---------------------------
+            ${{ runner.os }}-android-licenses-
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -57,20 +56,36 @@ jobs:
       - name: Accept Android licenses
         run: yes | sdkmanager --licenses || true
 
+      # Install only what the build needs (adjust if you change compile/target/ndk)
+      - name: Install required SDK packages
+        run: |
+          sdkmanager --install \
+            "platforms;android-35" \
+            "platform-tools" \
+            "build-tools;35.0.0" \
+            "cmake;3.22.1" \
+            "ndk;28.0.13004108"
+
+      - name: Enable AndroidX in gradle.properties
+        run: |
+          echo "android.useAndroidX=true" >> gradle.properties
+          echo "android.enableJetifier=true" >> gradle.properties
+          # Give Gradle more heap; helps packaging step
+          echo "org.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" >> gradle.properties
+          # Keep regular build cache ON, config cache OFF (SWIG task incompatible)
+          echo "org.gradle.caching=true" >> gradle.properties
+          echo "org.gradle.configuration-cache=false" >> gradle.properties
+
       - name: Make gradlew executable
         run: chmod +x gradlew
 
-      - name: Build Debug APK (XuiOvpn23)
-        env:
-          # Extra heap to avoid OOM during packaging
-          GRADLE_OPTS: "-Xmx3g -Dfile.encoding=UTF-8 -XX:+HeapDumpOnOutOfMemoryError"
+      - name: Build Debug APK (XuiOvpn23 only)
         run: |
           ./gradlew :main:assembleXuiOvpn23Debug \
-            --no-daemon --no-configuration-cache --build-cache \
-            -Dorg.gradle.caching=true \
+            --no-daemon --no-configuration-cache --build-cache -Dorg.gradle.caching=true \
             --stacktrace --info
 
-      # Always upload reports and any produced APKs (even on failure)
+      # Always upload reports and the APK
       - name: Upload build reports
         if: always()
         uses: actions/upload-artifact@v4
