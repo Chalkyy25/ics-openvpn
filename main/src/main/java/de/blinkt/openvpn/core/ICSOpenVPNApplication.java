@@ -55,6 +55,18 @@ public class ICSOpenVPNApplication extends Application {
     @Override public void onCreate() {
         super.onCreate();
         instance = this;
+    // --- Added for RetrofitClient ---
+    private static ICSOpenVPNApplication instance;
+
+    @Override public void onCreate() {
+        super.onCreate();
+        instance = this;
+    }
+
+    public static Context getAppContext() {
+        return instance != null ? instance.getApplicationContext() : null;
+    }
+    // --- End added section ---
     }
 
     public static Context getAppContext() {
