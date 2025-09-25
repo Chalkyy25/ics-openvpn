@@ -1,11 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- xui overlay: do NOT set package here -->
-
+    <!-- Only override/strip; do NOT set package here -->
     <application tools:replace="android:label">
 
-        <!-- Make LoginActivity the ONLY launcher in xui -->
+        <!-- Make LoginActivity the launcher for xui -->
         <activity
             android:name="de.blinkt.openvpn.ui.LoginActivity"
             android:exported="true">
@@ -15,22 +14,21 @@
             </intent-filter>
         </activity>
 
-        <!-- 1) Remove the base MainActivity completely... -->
-        <activity
-            android:name=".activities.MainActivity"
-            tools:node="remove" />
+        <!-- Keep MainActivity but strip all launcher/browsable filters -->
+        <activity android:name="de.blinkt.openvpn.activities.MainActivity">
+            <intent-filter tools:node="remove">
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
 
-        <!-- 2) ...and add it back WITHOUT any launcher/browsable filters -->
-        <activity
-            android:name=".activities.MainActivity"
-            android:exported="true" />
+        <!-- Remove the activity-alias entries from base -->
+        <activity-alias android:name=".api.ConnectVPN"    tools:node="remove"/>
+        <activity-alias android:name=".api.DisconnectVPN" tools:node="remove"/>
+        <activity-alias android:name=".api.PauseVPN"      tools:node="remove"/>
+        <activity-alias android:name=".api.ResumeVPN"     tools:node="remove"/>
 
-        <!-- Remove aliases that cause targetActivity/name conflicts -->
-        <activity-alias
-            android:name="de.blinkt.openvpn.api.ResumeVPN"
-            tools:node="remove" />
-        <activity-alias
-            android:name=".activities.ConfigConverterFile"
-            tools:node="remove" />
     </application>
 </manifest>
