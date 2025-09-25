@@ -1,20 +1,16 @@
 package de.blinkt.openvpn.api;
 
-import okhttp3.ResponseBody;
 import retrofit2.Call;
-import retrofit2.http.*;
+import retrofit2.http.Body;
+import retrofit2.http.GET;
+import retrofit2.http.Header;
+import retrofit2.http.POST;
 
 public interface ApiService {
-    @POST("auth/login")
+    @POST("/api/auth/login")
     Call<AuthResponse> login(@Body LoginRequest body);
 
-    @GET("profiles")
-    Call<ProfileResponse> getProfiles(@Header("Authorization") String bearer);
-
-    @GET("profiles/{id}")
-    Call<ResponseBody> getOvpn(
-        @Header("Authorization") String bearer,
-        @Path("id") int userId,
-        @Query("server_id") int serverId
-    );
+    // Optional: used later if you fetch profiles after login
+    @GET("/api/profiles")
+    Call<ProfilesResponse> profiles(@Header("Authorization") String bearerToken);
 }

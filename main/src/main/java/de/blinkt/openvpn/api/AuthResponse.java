@@ -1,12 +1,16 @@
 package de.blinkt.openvpn.api;
 
+import com.google.gson.annotations.SerializedName;
+
 public class AuthResponse {
-    public String token;
-    public User user;
+    @SerializedName("token") public String token;
+    @SerializedName("user")  public User user;
+
     public static class User {
-        public int id;
-        public String username;
-        public String expires;
-        public int max_conn;
+        @SerializedName("id")       public int id;
+        @SerializedName("username") public String username;
+        @SerializedName("active")   public boolean active;
+        @SerializedName("expires")  public String expires;   // ISO8601
+        @SerializedName("max_conn") public int maxConn;
     }
 }
