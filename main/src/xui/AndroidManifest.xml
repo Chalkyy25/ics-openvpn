@@ -1,37 +1,28 @@
-<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Remove TV/Leanback for this flavor to avoid TV launcher UI -->
-    <uses-feature
-        android:name="android.software.leanback"
-        android:required="false"
-        tools:node="remove" />
-    <uses-feature
-        android:name="android.hardware.touchscreen"
-        android:required="false"
-        tools:node="remove" />
-
     <application tools:replace="android:label">
-        <!-- Make LoginActivity the launcher for xui flavor -->
+
+        <!-- Make LoginActivity the ONLY launcher for the xui flavor -->
         <activity
             android:name="de.blinkt.openvpn.ui.LoginActivity"
             android:exported="true">
-            <intent-filter tools:node="replace">
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
 
-        <!-- Keep ServerPicker if you use it -->
-        <activity android:name="de.blinkt.openvpn.ui.ServerPickerActivity" />
+        <!-- Remove the launcher intent(s) that the UI flavor gives to MainActivity -->
+        <!-- (We keep the activity, just strip its MAIN/LAUNCHER filters.) -->
+        <activity android:name=".activities.MainActivity">
+            <intent-filter tools:node="remove">
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
 
-        <!-- Ensure any base MainActivity launcher is removed -->
-        <activity
-            android:name="de.blinkt.openvpn.activities.MainActivity"
-            tools:node="remove" />
-        <activity
-            android:name=".activities.MainActivity"
-            tools:node="remove" />
     </application>
 </manifest>
