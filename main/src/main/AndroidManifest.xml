@@ -31,9 +31,9 @@
             android:name="android.content.APP_RESTRICTIONS"
             android:resource="@xml/app_restrictions" />
 
-        <!-- Single launcher -->
+        <!-- Single launcher: FIXED FQCN to match your source file -->
         <activity
-            android:name="uk.co.aiovpn.app.ui.LoginActivity"
+            android:name="de.blinkt.openvpn.ui.LoginActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -101,10 +101,10 @@
         <receiver
             android:name=".OnBootReceiver"
             android:exported="true">
-            <intent-filter android:priority="999">
-                <action android:name="android.intent.action.BOOT_COMPLETED"/>
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
-            </intent-filter>
+                <intent-filter android:priority="999">
+                    <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                    <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                </intent-filter>
         </receiver>
 
         <service
@@ -137,6 +137,7 @@
             android:noHistory="true"
             android:exported="false"/>
 
+        <!-- These aliases are fine to keep in base -->
         <activity-alias
             android:name=".api.ConnectVPN"
             android:exported="true"
