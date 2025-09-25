@@ -1,39 +1,51 @@
-
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical" android:padding="20dp"
-    android:layout_width="match_parent" android:layout_height="match_parent">
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
 
     <TextView
         android:id="@+id/tvWelcome"
-        android:text="AIO VPN"
-        android:textSize="20sp" android:textStyle="bold"
-        android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Welcome"
+        android:textSize="18sp"
+        android:paddingBottom="12dp" />
 
     <TextView
-        android:id="@+id/tvSelectedServer"
-        android:text="No server selected"
-        android:layout_marginTop="16dp"
-        android:layout_width="match_parent" android:layout_height="wrap_content"/>
-
-    <Button
-        android:id="@+id/btnPickServer"
-        android:text="Pick server"
-        android:layout_marginTop="8dp"
-        android:layout_width="match_parent" android:layout_height="wrap_content"/>
-
-    <View android:layout_width="match_parent" android:layout_height="24dp"/>
+        android:id="@+id/tvServer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Server: (none)"
+        android:paddingBottom="24dp" />
 
     <Button
         android:id="@+id/btnConnect"
-        android:text="CONNECT"
-        android:textAllCaps="true"
-        android:layout_width="match_parent" android:layout_height="56dp"/>
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="CONNECT" />
 
-    <TextView
-        android:id="@+id/tvStatus"
-        android:text="Status: Idle"
-        android:layout_marginTop="16dp"
-        android:layout_width="match_parent" android:layout_height="wrap_content"/>
+    <Button
+        android:id="@+id/btnPickServer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="CHOOSE SERVER"
+        android:layout_marginTop="12dp" />
+
+    <Button
+        android:id="@+id/btnLogout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="LOG OUT"
+        android:layout_marginTop="12dp" />
+
+    <ProgressBar
+        android:id="@+id/progress"
+        style="?android:attr/progressBarStyleLarge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone"
+        android:layout_marginTop="20dp" />
 </LinearLayout>
-
