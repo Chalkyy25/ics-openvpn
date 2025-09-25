@@ -1,40 +1,38 @@
+import de.blinkt.openvpn.ui.MainActivity;
 package de.blinkt.openvpn.ui;
 
 import android.app.Activity;
-import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
 import de.blinkt.openvpn.R;
-import de.blinkt.openvpn.api.ApiService;
-import de.blinkt.openvpn.api.AuthResponse;
-import de.blinkt.openvpn.api.LoginRequest;
-import de.blinkt.openvpn.api.RetrofitClient;
+import de.blinkt.openvpn.api.*;
 import de.blinkt.openvpn.util.Prefs;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
+import android.content.Intent;
+
 public class LoginActivity extends Activity {
-
     private EditText etUser, etPass;
-    private Button btnLogin, btnServers;
+    private Button btnLogin, btnOpenServers;
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
         etUser = findViewById(R.id.etUsername);
         etPass = findViewById(R.id.etPassword);
         btnLogin = findViewById(R.id.btnLogin);
-        btnServers = findViewById(R.id.btnServers);
+        btnOpenServers = findViewById(R.id.btnServers);
 
         btnLogin.setOnClickListener(v -> doLogin());
-        btnServers.setOnClickListener(v ->
-                startActivity(new Intent(this, ServerPickerActivity.class)));
+        btnOpenServers.setOnClickListener(v -> {
+            startActivity(new Intent(this, ServerPickerActivity.class));
+        });
     }
 
     private void doLogin() {
@@ -48,19 +46,20 @@ public class LoginActivity extends Activity {
         ApiService api = RetrofitClient.service();
         api.login(new LoginRequest(u, p)).enqueue(new Callback<AuthResponse>() {
             @Override public void onResponse(Call<AuthResponse> call, Response<AuthResponse> resp) {
-                if (resp.isSuccessful() && resp.body() != null && resp.body().token != null) {
+                if (resp.isSuccessful() && resp.body()!=null && resp.body().token!=null) {
                     int userId = resp.body().user != null ? resp.body().user.id : 0;
                     Prefs.saveAuth(LoginActivity.this, resp.body().token, userId);
-                    Toast.makeText(LoginActivity.this, "Logged in", Toast.LENGTH_SHORT).show();
-                    // Go to main screen
                     startActivity(new Intent(LoginActivity.this, MainActivity.class));
                     finish();
+                    startActivity(new Intent(LoginActivity.this, MainActivity.class));
+                    finish();
+                    Toast.makeText(LoginActivity.this, "Logged in", Toast.LENGTH_SHORT).show();
                 } else {
                     Toast.makeText(LoginActivity.this, "Login failed", Toast.LENGTH_SHORT).show();
                 }
             }
             @Override public void onFailure(Call<AuthResponse> call, Throwable t) {
-                Toast.makeText(LoginActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(LoginActivity.this, "Error: "+t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }

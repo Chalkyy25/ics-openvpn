@@ -1,4 +1,3 @@
-import android.content.Intent;
 package de.blinkt.openvpn.ui;
 
 import android.app.Activity;
@@ -6,300 +5,111 @@ import android.os.Bundle;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
+import android.content.Intent;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import de.blinkt.openvpn.R;
-import de.blinkt.openvpn.api.*;
+import de.blinkt.openvpn.api.ApiService;
+import de.blinkt.openvpn.api.ProfileResponse;
+import de.blinkt.openvpn.api.RetrofitClient;
+import de.blinkt.openvpn.api.ServerItem;
 import de.blinkt.openvpn.util.Prefs;
-import de.blinkt.openvpn.util.OvpnImporter;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class ServerPickerActivity extends Activity {
-    private ListView listView;
-    private ProfileResponse profile;
-    private List<String> labels = new ArrayList<>();
 
-    @Override protected void onCreate(Bundle savedInstanceState) {
+    private ListView listView;
+    private ArrayAdapter<String> adapter;
+    private final List<ServerItem> servers = new ArrayList<>();
+    private final List<String> labels = new ArrayList<>();
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_server_picker);
-        listView = findViewById(R.id.lvServers);
+
+        listView = findViewById(R.id.serverList);
+        adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, labels);
+        listView.setAdapter(adapter);
+        listView.setOnItemClickListener((parent, view, position, id) -> {
+            ServerItem s = servers.get(position);
+            finishWithSelection(s.id, s.name);
+        });
 
         loadServers();
-        listView.setOnItemClickListener((parent, view, position, id) -> {
-            if (profile == null || profile.servers == null) return;
-            ProfileResponse.Server s = profile.servers.get(position);
-            fetchAndConnect(s);
-        });
-    private void finishWithSelection(int id, String name) {
-
-        Intent r = new Intent();
-
-        r.putExtra("server_id", id);
-
-        r.putExtra("server_name", name);
-
-        setResult(Activity.RESULT_OK, r);
-
-        finish();
-
     }
 
+    private void finishWithSelection(int id, String name) {
+        Intent r = new Intent();
+        r.putExtra("server_id", id);
+        r.putExtra("server_name", name);
+        setResult(Activity.RESULT_OK, r);
+        finish();
     }
 
     private void loadServers() {
         String token = Prefs.getToken(this);
         if (token == null) {
-            Toast.makeText(this, "Please login first", Toast.LENGTH_SHORT).show(); return;
-    private void finishWithSelection(int id, String name) {
-
-        Intent r = new Intent();
-
-        r.putExtra("server_id", id);
-
-        r.putExtra("server_name", name);
-
-        setResult(Activity.RESULT_OK, r);
-
-        finish();
-
-    }
-
+            Toast.makeText(this, "Please login first", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
         }
+
         ApiService api = RetrofitClient.service();
-        api.getProfiles("Bearer "+token).enqueue(new Callback<ProfileResponse>() {
+        api.getProfiles("Bearer " + token).enqueue(new Callback<ProfileResponse>() {
             @Override public void onResponse(Call<ProfileResponse> call, Response<ProfileResponse> resp) {
-                if (resp.isSuccessful() && resp.body()!=null) {
-                    profile = resp.body();
-                    labels.clear();
-                    if (profile.servers != null) {
-                        for (ProfileResponse.Server s : profile.servers) {
-                            labels.add(s.name + " • " + s.ip);
-    private void finishWithSelection(int id, String name) {
-
-        Intent r = new Intent();
-
-        r.putExtra("server_id", id);
-
-        r.putExtra("server_name", name);
-
-        setResult(Activity.RESULT_OK, r);
-
-        finish();
-
-    }
-
-                        }
-                        listView.setAdapter(new ArrayAdapter<>(ServerPickerActivity.this,
-                                android.R.layout.simple_list_item_1, labels));
-                    } else {
-                        Toast.makeText(ServerPickerActivity.this, "No servers", Toast.LENGTH_SHORT).show();
-    private void finishWithSelection(int id, String name) {
-
-        Intent r = new Intent();
-
-        r.putExtra("server_id", id);
-
-        r.putExtra("server_name", name);
-
-        setResult(Activity.RESULT_OK, r);
-
-        finish();
-
-    }
-
-                    }
-                } else {
-                    Toast.makeText(ServerPickerActivity.this, "Fetch failed", Toast.LENGTH_SHORT).show();
-    private void finishWithSelection(int id, String name) {
-
-        Intent r = new Intent();
-
-        r.putExtra("server_id", id);
-
-        r.putExtra("server_name", name);
-
-        setResult(Activity.RESULT_OK, r);
-
-        finish();
-
-    }
-
+                if (!resp.isSuccessful() || resp.body() == null) {
+                    Toast.makeText(ServerPickerActivity.this, "Failed to load servers", Toast.LENGTH_SHORT).show();
+                    return;
                 }
-    private void finishWithSelection(int id, String name) {
-
-        Intent r = new Intent();
-
-        r.putExtra("server_id", id);
-
-        r.putExtra("server_name", name);
-
-        setResult(Activity.RESULT_OK, r);
-
-        finish();
-
-    }
-
+                ProfileResponse profile = resp.body();
+                servers.clear();
+                labels.clear();
+                if (profile.servers != null) {
+                    servers.addAll(profile.servers);
+                    for (ServerItem s : profile.servers) {
+                        labels.add(s.name + (s.ip != null ? " (" + s.ip + ")" : ""));
+                    }
+                }
+                adapter.notifyDataSetChanged();
             }
             @Override public void onFailure(Call<ProfileResponse> call, Throwable t) {
-                Toast.makeText(ServerPickerActivity.this, "Error: "+t.getMessage(), Toast.LENGTH_SHORT).show();
-    private void finishWithSelection(int id, String name) {
-
-        Intent r = new Intent();
-
-        r.putExtra("server_id", id);
-
-        r.putExtra("server_name", name);
-
-        setResult(Activity.RESULT_OK, r);
-
-        finish();
-
-    }
-
+                Toast.makeText(ServerPickerActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
-    private void finishWithSelection(int id, String name) {
-
-        Intent r = new Intent();
-
-        r.putExtra("server_id", id);
-
-        r.putExtra("server_name", name);
-
-        setResult(Activity.RESULT_OK, r);
-
-        finish();
-
     }
 
-    }
-
-    private void fetchAndConnect(ProfileResponse.Server s) {
+    // Optional: fetch and auto-import a config (not used in list click above)
+    private void fetchAndImport(ServerItem s) {
         String token = Prefs.getToken(this);
         int userId = Prefs.getUserId(this);
         if (token == null || userId == 0) {
-            Toast.makeText(this, "Missing auth", Toast.LENGTH_SHORT).show(); return;
-    private void finishWithSelection(int id, String name) {
-
-        Intent r = new Intent();
-
-        r.putExtra("server_id", id);
-
-        r.putExtra("server_name", name);
-
-        setResult(Activity.RESULT_OK, r);
-
-        finish();
-
-    }
-
+            Toast.makeText(this, "Missing auth", Toast.LENGTH_SHORT).show();
+            return;
         }
         ApiService api = RetrofitClient.service();
-        api.getOvpn("Bearer "+token, userId, s.id).enqueue(new Callback<ResponseBody>() {
+        api.getOvpn("Bearer " + token, userId, s.id).enqueue(new Callback<ResponseBody>() {
             @Override public void onResponse(Call<ResponseBody> call, Response<ResponseBody> resp) {
-                if (resp.isSuccessful() && resp.body()!=null) {
-                    try {
-                        String cfg = resp.body().string();
-                        OvpnImporter.importAndConnect(ServerPickerActivity.this, cfg, "AIO "+s.name);
-                    } catch (Exception e) {
-                        Toast.makeText(ServerPickerActivity.this, "Parse error: "+e.getMessage(), Toast.LENGTH_LONG).show();
-    private void finishWithSelection(int id, String name) {
-
-        Intent r = new Intent();
-
-        r.putExtra("server_id", id);
-
-        r.putExtra("server_name", name);
-
-        setResult(Activity.RESULT_OK, r);
-
-        finish();
-
-    }
-
-                    }
-                } else {
-                    Toast.makeText(ServerPickerActivity.this, "Config failed: "+resp.code(), Toast.LENGTH_SHORT).show();
-    private void finishWithSelection(int id, String name) {
-
-        Intent r = new Intent();
-
-        r.putExtra("server_id", id);
-
-        r.putExtra("server_name", name);
-
-        setResult(Activity.RESULT_OK, r);
-
-        finish();
-
-    }
-
+                if (!resp.isSuccessful() || resp.body() == null) {
+                    Toast.makeText(ServerPickerActivity.this, "Failed to fetch config", Toast.LENGTH_SHORT).show();
+                    return;
                 }
-    private void finishWithSelection(int id, String name) {
-
-        Intent r = new Intent();
-
-        r.putExtra("server_id", id);
-
-        r.putExtra("server_name", name);
-
-        setResult(Activity.RESULT_OK, r);
-
-        finish();
-
-    }
-
+                try {
+                    String cfg = resp.body().string();
+                    // OvpnImporter.importAndConnect(ServerPickerActivity.this, cfg, "AIO " + s.name);
+                    Toast.makeText(ServerPickerActivity.this, "Got config (" + cfg.length() + " bytes)", Toast.LENGTH_SHORT).show();
+                } catch (Exception e) {
+                    Toast.makeText(ServerPickerActivity.this, "Read error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                }
             }
             @Override public void onFailure(Call<ResponseBody> call, Throwable t) {
-                Toast.makeText(ServerPickerActivity.this, "Error: "+t.getMessage(), Toast.LENGTH_SHORT).show();
-    private void finishWithSelection(int id, String name) {
-
-        Intent r = new Intent();
-
-        r.putExtra("server_id", id);
-
-        r.putExtra("server_name", name);
-
-        setResult(Activity.RESULT_OK, r);
-
-        finish();
-
-    }
-
+                Toast.makeText(ServerPickerActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
-    private void finishWithSelection(int id, String name) {
-
-        Intent r = new Intent();
-
-        r.putExtra("server_id", id);
-
-        r.putExtra("server_name", name);
-
-        setResult(Activity.RESULT_OK, r);
-
-        finish();
-
     }
-
-    }
-    private void finishWithSelection(int id, String name) {
-
-        Intent r = new Intent();
-
-        r.putExtra("server_id", id);
-
-        r.putExtra("server_name", name);
-
-        setResult(Activity.RESULT_OK, r);
-
-        finish();
-
-    }
-
 }
