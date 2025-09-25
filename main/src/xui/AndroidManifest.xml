@@ -1,36 +1,37 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           xmlns:tools="http://schemas.android.com/tools">
 
-    <application
-        tools:replace="android:label, android:icon, android:roundIcon">
+    <!-- We only override/strip things; do NOT set package here. -->
+    <application tools:replace="android:label">
 
-        <!-- Make LoginActivity the ONLY launcher -->
+        <!-- Make LoginActivity the launcher for xui -->
         <activity
             android:name="de.blinkt.openvpn.ui.LoginActivity"
-            android:exported="true"
-            tools:node="merge">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
 
-        <!-- Keep MainActivity but remove launcher intents -->
-        <activity
-            android:name=".activities.MainActivity"
-            tools:node="merge">
+        <!-- Remove ALL launcher/browsable filters from MainActivity -->
+        <activity android:name=".activities.MainActivity">
             <intent-filter tools:node="remove">
                 <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
 
-        <!-- Avoid duplicate alias/exported conflicts -->
+        <!-- Completely drop activity-aliases that cause merge conflicts -->
+        <!-- (names must match the originals from the base manifest) -->
+        <activity-alias
+            android:name="de.blinkt.openvpn.api.ResumeVPN"
+            tools:node="remove" />
         <activity-alias
             android:name=".activities.ConfigConverterFile"
-            tools:replace="android:exported android:targetActivity" />
+            tools:node="remove" />
 
     </application>
 </manifest>
