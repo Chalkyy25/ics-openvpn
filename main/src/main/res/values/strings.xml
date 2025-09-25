@@ -4,6 +4,7 @@
   -->
 <resources>
     <string name="app_name">AIO VPN</string>
+    <string name="app">AIO VPN</string>
     <string name="address">Server Address:</string>
     <string name="port">Server Port:</string>
     <string name="location">Location</string>

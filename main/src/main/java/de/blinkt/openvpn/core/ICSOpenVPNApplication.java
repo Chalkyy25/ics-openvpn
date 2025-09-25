@@ -143,3 +143,16 @@ public class ICSOpenVPNApplication extends Application {
         mNotificationManager.createNotificationChannel(mChannel);
     }
 }
+
+// --- Added for RetrofitClient ---
+private static ICSOpenVPNApplication instance;
+
+@Override public void onCreate() {
+    super.onCreate();
+    instance = this;
+}
+
+public static Context getAppContext() {
+    return instance != null ? instance.getApplicationContext() : null;
+}
+// --- End added section ---
