@@ -9,6 +9,7 @@ import retrofit2.http.POST;
 import retrofit2.http.Path;
 import retrofit2.http.Query;
 
+// DTOs
 public class LoginRequest {
     public String username;
     public String password;
@@ -27,6 +28,7 @@ public class ProfileResponse {
     public static class Server { public int id; public String name; public String ip; }
 }
 
+// Retrofit interface
 public interface ApiService {
     @POST("auth/login")
     Call<AuthResponse> login(@Body LoginRequest req);
