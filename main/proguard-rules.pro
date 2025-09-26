@@ -1,0 +1,1 @@
+-keep class de.blinkt.openvpn.ui.MainActivity { *; }

@@ -1,6 +1,10 @@
 package de.blinkt.openvpn.ui;
 
 import android.app.Activity;
+<<<<<<< HEAD
+=======
+import android.content.ActivityNotFoundException;
+>>>>>>> b8e5ff38 (changes to activity main)
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Button;
@@ -83,6 +87,7 @@ public class LoginActivity extends Activity {
     }
 
     private void goToMain() {
+<<<<<<< HEAD
         Intent i = new Intent(LoginActivity.this, MainActivity.class);
         startActivity(i);
         finish();
@@ -96,3 +101,24 @@ public class LoginActivity extends Activity {
         Toast.makeText(this, s, Toast.LENGTH_LONG).show();
     }
 }
+=======
+        try {
+            Intent i = new Intent(LoginActivity.this, MainActivity.class);
+            startActivity(i);
+            finish();
+        } catch (ActivityNotFoundException e) {
+            toast("Main screen not found. Check manifest class name: " + e.getMessage());
+        } catch (Throwable t) {
+            toast("Failed to open main screen: " + t.getMessage());
+        }
+    }
+
+    private static String safe(CharSequence cs) {
+        return cs == null ? "" : cs.toString().trim();
+    }
+
+    private void toast(String s) {
+        Toast.makeText(this, s, Toast.LENGTH_LONG).show();
+    }
+}
+>>>>>>> b8e5ff38 (changes to activity main)
