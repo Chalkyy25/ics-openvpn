@@ -14,7 +14,7 @@ import de.blinkt.openvpn.R;
 import de.blinkt.openvpn.api.ApiService;
 import de.blinkt.openvpn.api.ProfileResponse;
 import de.blinkt.openvpn.api.RetrofitClient;
-import de.blinkt.openvpn.api.ServerItem;
+import de.blinkt.openvpn.api.dto.ServerItem;
 import de.blinkt.openvpn.util.Prefs;
 import okhttp3.ResponseBody;
 import retrofit2.Call;

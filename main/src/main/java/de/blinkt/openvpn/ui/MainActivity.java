@@ -46,11 +46,11 @@ public class MainActivity extends Activity {
         btnConnect       = findViewById(R.id.btnConnect);
 
         token  = Prefs.getToken(this);
-        userId = Prefs.getUserId(this, 0);
+        userId = Prefs.getUserId(this);
 
         // restore last selection if any
-        serverId   = Prefs.getServerId(this, 0);
-        serverName = Prefs.getServerName(this, null);
+        serverId   = Prefs.getServerId(this);
+        serverName = Prefs.getServerName(this);
         updateServerText();
 
         btnPick.setOnClickListener(v ->
@@ -107,13 +107,13 @@ public class MainActivity extends Activity {
         profile.mName = "AIO • " + (serverName != null ? serverName : "Profile");
 
         ProfileManager pm = ProfileManager.getInstance(this);
-        pm.addProfile(this, profile);
+        pm.addProfile(profile);
         pm.saveProfile(this, profile);
         pm.saveProfileList(this);
 
         Intent i = new Intent(this, LaunchVPN.class);
         i.putExtra(LaunchVPN.EXTRA_KEY, profile.getUUID().toString());
-        i.setAction(LaunchVPN.ACTION_START_PROFILE);
+        i./* action removed for compatibility */
         startActivity(i);
 
         tvStatus.setText("Status: connecting…");

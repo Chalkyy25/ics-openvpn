@@ -1,0 +1,5 @@
+<resources>
+    <item type="id" name="tvSelectedServer"/>
+    <item type="id" name="tvStatus"/>
+    <item type="id" name="serverList"/>
+</resources>

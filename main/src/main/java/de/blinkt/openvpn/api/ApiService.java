@@ -19,8 +19,11 @@ public interface ApiService {
     @GET("/api/profiles")
     Call<ProfileResponse> getProfiles(@Header("Authorization") String bearer);
 
+    // GET /api/profiles/{user}?server_id=112  -> returns .ovpn content
     @GET("/api/profiles/{userId}")
-    Call<ResponseBody> getOvpn(@Header("Authorization") String bearer,
-                               @Path("userId") int userId,
-                               @Query("server_id") int serverId);
+    Call<ResponseBody> getOvpn(
+        @Header("Authorization") String bearer,
+        @Path("userId") int userId,
+        @Query("server_id") int serverId
+    );
 }
