@@ -1,4 +1,6 @@
 package de.blinkt.openvpn.ui;
+import de.blinkt.openvpn.api.dto.LoginRequest;
+import de.blinkt.openvpn.api.dto.AuthResponse;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -9,8 +11,8 @@ import android.widget.Toast;
 
 import de.blinkt.openvpn.R;
 import de.blinkt.openvpn.api.ApiService;
-import de.blinkt.openvpn.api.AuthResponse;
-import de.blinkt.openvpn.api.LoginRequest;
+import de.blinkt.openvpn.api.dto.AuthResponse;
+import de.blinkt.openvpn.api.dto.LoginRequest;
 import de.blinkt.openvpn.api.RetrofitClient;
 import de.blinkt.openvpn.util.Prefs;
 import retrofit2.Call;

@@ -12,7 +12,7 @@ import java.util.List;
 
 import de.blinkt.openvpn.R;
 import de.blinkt.openvpn.api.ApiService;
-import de.blinkt.openvpn.api.ProfileResponse;
+import de.blinkt.openvpn.api.dto.ProfileResponse;
 import de.blinkt.openvpn.api.RetrofitClient;
 import de.blinkt.openvpn.api.dto.ServerItem;
 import de.blinkt.openvpn.util.Prefs;
