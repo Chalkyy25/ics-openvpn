@@ -6,10 +6,7 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public final class RetrofitClient {
-
-    // Your panel API base URL (keep the trailing slash)
     private static final String BASE_URL = "https://aiovpn.co.uk/api/";
-
     private static volatile ApiService INSTANCE;
 
     public static ApiService service() {
@@ -20,14 +17,15 @@ public final class RetrofitClient {
                     httpLog.setLevel(HttpLoggingInterceptor.Level.BASIC);
 
                     OkHttpClient client = new OkHttpClient.Builder()
-                            .addInterceptor(httpLog)
-                            .build();
+                        .addInterceptor(httpLog)
+                        .retryOnConnectionFailure(true)
+                        .build();
 
                     Retrofit retrofit = new Retrofit.Builder()
-                            .baseUrl(BASE_URL)
-                            .addConverterFactory(GsonConverterFactory.create())
-                            .client(client)
-                            .build();
+                        .baseUrl(BASE_URL)
+                        .addConverterFactory(GsonConverterFactory.create())
+                        .client(client)
+                        .build();
 
                     INSTANCE = retrofit.create(ApiService.class);
                 }

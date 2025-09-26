@@ -1,69 +1,85 @@
 package de.blinkt.openvpn.ui;
-import de.blinkt.openvpn.api.dto.LoginRequest;
-import de.blinkt.openvpn.api.dto.AuthResponse;
 
 import android.app.Activity;
-import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
+import android.content.Intent;
 
 import de.blinkt.openvpn.R;
 import de.blinkt.openvpn.api.ApiService;
+import de.blinkt.openvpn.api.RetrofitClient;
 import de.blinkt.openvpn.api.dto.AuthResponse;
 import de.blinkt.openvpn.api.dto.LoginRequest;
-import de.blinkt.openvpn.api.RetrofitClient;
 import de.blinkt.openvpn.util.Prefs;
+import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
 public class LoginActivity extends Activity {
-
     private EditText etUser, etPass;
-    private Button btnLogin, btnServers;
+    private Button btnLogin, btnOpenServers;
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
         etUser = findViewById(R.id.etUsername);
         etPass = findViewById(R.id.etPassword);
         btnLogin = findViewById(R.id.btnLogin);
-        btnServers = findViewById(R.id.btnServers);
+        btnOpenServers = findViewById(R.id.btnServers);
 
         btnLogin.setOnClickListener(v -> doLogin());
-        btnServers.setOnClickListener(v ->
-                startActivity(new Intent(this, ServerPickerActivity.class)));
+        btnOpenServers.setOnClickListener(v ->
+            startActivity(new Intent(this, ServerPickerActivity.class))
+        );
     }
 
     private void doLogin() {
-        String u = etUser.getText().toString().trim();
-        String p = etPass.getText().toString().trim();
+        String u = safe(etUser.getText());
+        String p = safe(etPass.getText());
         if (u.isEmpty() || p.isEmpty()) {
-            Toast.makeText(this, "Enter username and password", Toast.LENGTH_SHORT).show();
+            toast("Enter username and password");
             return;
         }
 
         ApiService api = RetrofitClient.service();
         api.login(new LoginRequest(u, p)).enqueue(new Callback<AuthResponse>() {
             @Override public void onResponse(Call<AuthResponse> call, Response<AuthResponse> resp) {
-                if (resp.isSuccessful() && resp.body() != null && resp.body().token != null) {
-                    int userId = resp.body().user != null ? resp.body().user.id : 0;
-                    Prefs.saveAuth(LoginActivity.this, resp.body().token, userId);
-                    Toast.makeText(LoginActivity.this, "Logged in", Toast.LENGTH_SHORT).show();
+                try {
+                    if (!resp.isSuccessful()) {
+                        String msg = "HTTP " + resp.code();
+                        ResponseBody eb = resp.errorBody();
+                        if (eb != null) msg += " - " + eb.string();
+                        toast("Login failed: " + msg);
+                        return;
+                    }
+                    AuthResponse body = resp.body();
+                    if (body == null || body.token == null || body.token.isEmpty()) {
+                        toast("Login failed: empty response");
+                        return;
+                    }
+                    int userId = (body.user != null) ? body.user.id : 0;
+                    Prefs.saveAuth(LoginActivity.this, body.token, userId);
+                    toast("Logged in");
+
                     // Go to main screen
                     startActivity(new Intent(LoginActivity.this, MainActivity.class));
                     finish();
-                } else {
-                    Toast.makeText(LoginActivity.this, "Login failed", Toast.LENGTH_SHORT).show();
+                } catch (Throwable t) {
+                    toast("Login error: " + t.getMessage());
                 }
             }
             @Override public void onFailure(Call<AuthResponse> call, Throwable t) {
-                Toast.makeText(LoginActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                toast("Network error: " + (t.getMessage() == null ? "unknown" : t.getMessage()));
             }
         });
     }
+
+    private static String safe(CharSequence cs) {
+        return cs == null ? "" : cs.toString().trim();
+    }
+    private void toast(String s) { Toast.makeText(this, s, Toast.LENGTH_LONG).show(); }
 }
