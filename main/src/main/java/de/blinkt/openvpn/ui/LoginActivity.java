@@ -1,15 +1,14 @@
 package de.blinkt.openvpn.ui;
 
 import android.app.Activity;
-<<<<<<< HEAD
-=======
 import android.content.ActivityNotFoundException;
->>>>>>> b8e5ff38 (changes to activity main)
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
 
 import de.blinkt.openvpn.R;
 import de.blinkt.openvpn.api.ApiService;
@@ -25,7 +24,6 @@ import retrofit2.Response;
 public class LoginActivity extends Activity {
 
     private EditText etUser, etPass;
-    private Button btnLogin, btnOpenServers;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,8 +32,8 @@ public class LoginActivity extends Activity {
 
         etUser = findViewById(R.id.etUsername);
         etPass = findViewById(R.id.etPassword);
-        btnLogin = findViewById(R.id.btnLogin);
-        btnOpenServers = findViewById(R.id.btnServers);
+        Button btnLogin = findViewById(R.id.btnLogin);
+        Button btnOpenServers = findViewById(R.id.btnServers);
 
         btnLogin.setOnClickListener(v -> doLogin());
         btnOpenServers.setOnClickListener(v ->
@@ -46,15 +44,16 @@ public class LoginActivity extends Activity {
     private void doLogin() {
         String u = safe(etUser.getText());
         String p = safe(etPass.getText());
+
         if (u.isEmpty() || p.isEmpty()) {
             toast("Enter username and password");
             return;
         }
 
         ApiService api = RetrofitClient.service();
-        api.login(new LoginRequest(u, p)).enqueue(new Callback<AuthResponse>() {
+        api.login(new LoginRequest(u, p)).enqueue(new Callback<>() {
             @Override
-            public void onResponse(Call<AuthResponse> call, Response<AuthResponse> resp) {
+            public void onResponse(@NonNull Call<AuthResponse> call, @NonNull Response<AuthResponse> resp) {
                 try {
                     if (!resp.isSuccessful()) {
                         String msg = "HTTP " + resp.code();
@@ -63,6 +62,7 @@ public class LoginActivity extends Activity {
                         toast("Login failed: " + msg);
                         return;
                     }
+
                     AuthResponse body = resp.body();
                     if (body == null || body.token == null || body.token.isEmpty()) {
                         toast("Login failed: empty response");
@@ -71,37 +71,23 @@ public class LoginActivity extends Activity {
 
                     int userId = (body.user != null) ? body.user.id : 0;
                     Prefs.saveAuth(LoginActivity.this, body.token, userId);
-                    toast("Logged in");
 
+                    toast("Logged in");
                     goToMain();
+
                 } catch (Throwable t) {
                     toast("Login error: " + t.getMessage());
                 }
             }
 
             @Override
-            public void onFailure(Call<AuthResponse> call, Throwable t) {
+            public void onFailure(@NonNull Call<AuthResponse> call, @NonNull Throwable t) {
                 toast("Network error: " + (t.getMessage() == null ? "unknown" : t.getMessage()));
             }
         });
     }
 
     private void goToMain() {
-<<<<<<< HEAD
-        Intent i = new Intent(LoginActivity.this, MainActivity.class);
-        startActivity(i);
-        finish();
-    }
-
-    private static String safe(CharSequence cs) {
-        return cs == null ? "" : cs.toString().trim();
-    }
-
-    private void toast(String s) {
-        Toast.makeText(this, s, Toast.LENGTH_LONG).show();
-    }
-}
-=======
         try {
             Intent i = new Intent(LoginActivity.this, MainActivity.class);
             startActivity(i);
@@ -121,4 +107,3 @@ public class LoginActivity extends Activity {
         Toast.makeText(this, s, Toast.LENGTH_LONG).show();
     }
 }
->>>>>>> b8e5ff38 (changes to activity main)

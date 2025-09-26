@@ -3,8 +3,12 @@ package de.blinkt.openvpn.util;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import de.blinkt.openvpn.ui.MainActivity;
+
 public final class Prefs {
     private static final String FILE = "aiovpn_prefs";
+    private static MainActivity mainActivity;
+
     private Prefs() {}
     private static SharedPreferences p(Context c) { return c.getSharedPreferences(FILE, Context.MODE_PRIVATE); }
 
@@ -25,4 +29,8 @@ public final class Prefs {
     public static int getServerId(Context c, int def) { return p(c).getInt("server_id", def); }
     public static String getServerName(Context c) { return p(c).getString("server_name", null); }
     public static String getServerName(Context c, String def) { return p(c).getString("server_name", def); }
+
+    public static void clearAuth(MainActivity mainActivity) {
+        Prefs.mainActivity = mainActivity;
+    }
 }
