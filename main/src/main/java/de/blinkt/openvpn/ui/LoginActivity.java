@@ -83,3 +83,9 @@ public class LoginActivity extends Activity {
     }
     private void toast(String s) { Toast.makeText(this, s, Toast.LENGTH_LONG).show(); }
 }
+
+    private void goToMain() {
+        Intent i = new Intent(LoginActivity.this, MainActivity.class);
+        startActivity(i);
+        finish();
+    }

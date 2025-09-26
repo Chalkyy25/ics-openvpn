@@ -183,5 +183,8 @@
         </provider>
         -->
 
+        <activity
+            android:name="de.blinkt.openvpn.ui.MainActivity"
+            android:exported="false"/>
     </application>
 </manifest>
