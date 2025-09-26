@@ -113,7 +113,7 @@ public class MainActivity extends Activity {
 
         Intent i = new Intent(this, LaunchVPN.class);
         i.putExtra(LaunchVPN.EXTRA_KEY, profile.getUUID().toString());
-        i./* action removed for compatibility */
+startActivity(i);
         startActivity(i);
 
         tvStatus.setText("Status: connecting…");
