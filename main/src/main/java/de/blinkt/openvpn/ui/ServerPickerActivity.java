@@ -23,7 +23,6 @@ import retrofit2.Response;
 
 public class ServerPickerActivity extends Activity {
 
-    private ListView listView;
     private ArrayAdapter<String> adapter;
     private final List<ServerItem> servers = new ArrayList<>();
     private final List<String> labels = new ArrayList<>();
@@ -33,7 +32,7 @@ public class ServerPickerActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_server_picker);
 
-        listView = findViewById(R.id.serverList);
+        ListView listView = findViewById(R.id.serverList);
         adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, labels);
         listView.setAdapter(adapter);
         listView.setOnItemClickListener((parent, view, position, id) -> {
@@ -61,8 +60,9 @@ public class ServerPickerActivity extends Activity {
         }
 
         ApiService api = RetrofitClient.service();
-        api.getProfiles("Bearer " + token).enqueue(new Callback<ProfileResponse>() {
-            @Override public void onResponse(Call<ProfileResponse> call, Response<ProfileResponse> resp) {
+        api.getProfiles("Bearer " + token).enqueue(new Callback<>() {
+            @Override
+            public void onResponse(Call<ProfileResponse> call, Response<ProfileResponse> resp) {
                 if (!resp.isSuccessful() || resp.body() == null) {
                     Toast.makeText(ServerPickerActivity.this, "Failed to load servers", Toast.LENGTH_SHORT).show();
                     return;
@@ -78,7 +78,9 @@ public class ServerPickerActivity extends Activity {
                 }
                 adapter.notifyDataSetChanged();
             }
-            @Override public void onFailure(Call<ProfileResponse> call, Throwable t) {
+
+            @Override
+            public void onFailure(Call<ProfileResponse> call, Throwable t) {
                 Toast.makeText(ServerPickerActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
