@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Permissions -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-    <!-- NOTE: READ_EXTERNAL_STORAGE is legacy on Android 13+; keep only if you truly need it -->
+    <!-- NOTE: Remove if you don't actually read external files on Android 13+ -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"
-        tools:targetApi="33"/>
-    <!-- Needed for “allowed apps” picker -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" tools:targetApi="33"/>
+
+    <!-- If you truly need to list all apps for an "Allowed Apps" picker, keep this.
+         Prefer <queries> package visibility if possible for Play compliance. -->
     <uses-permission
         android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission"/>
@@ -29,19 +29,15 @@
         android:networkSecurityConfig="@xml/network_security_config"
         tools:ignore="UnusedAttribute">
 
-        <!-- Brand + API base URL for RetrofitClient to read at runtime -->
-        <meta-data
-            android:name="AIOVPN_APP_NAME"
-            android:value="AIO VPN"/>
-        <meta-data
-            android:name="AIOVPN_API_BASE_URL"
-            android:value="https://aiovpn.co.uk/api"/>
+        <!-- Brand + API base URL for RetrofitClient -->
+        <meta-data android:name="AIOVPN_APP_NAME" android:value="AIO VPN"/>
+        <meta-data android:name="AIOVPN_API_BASE_URL" android:value="https://aiovpn.co.uk/api"/>
 
         <meta-data
             android:name="android.content.APP_RESTRICTIONS"
-            android:resource="@xml/app_restrictions" />
+            android:resource="@xml/app_restrictions"/>
 
-        <!-- SINGLE launcher: LoginActivity -->
+        <!-- Launcher -->
         <activity
             android:name="de.blinkt.openvpn.ui.LoginActivity"
             android:exported="true">
@@ -51,23 +47,41 @@
             </intent-filter>
         </activity>
 
-        <!-- Additional screens -->
+        <!-- Main (post-login) -->
+        <activity
+            android:name="de.blinkt.openvpn.ui.MainActivity"
+            android:exported="false"/>
+
+        <!-- Server picker -->
         <activity
             android:name="de.blinkt.openvpn.ui.ServerPickerActivity"
             android:exported="false"/>
 
+        <!-- In-app OpenVPN log window (for diagnostics) -->
         <activity
-            android:name=".activities.DisconnectVPN"
+            android:name="de.blinkt.openvpn.activities.LogWindow"
+            android:label="VPN Logs"
+            android:exported="false"/>
+
+        <!-- LaunchVPN shim dialog (ICS) -->
+        <activity
+            android:name=".LaunchVPN"
             android:autoRemoveFromRecents="true"
             android:excludeFromRecents="true"
-            android:noHistory="true"
-            android:taskAffinity=".DisconnectVPN"
-            android:theme="@style/blinkt.dialog" />
+            android:label="@string/app_name"
+            android:taskAffinity=".LaunchVPN"
+            android:theme="@style/blinkt.dialog"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </activity>
 
-        <!-- Core VPN services -->
+        <!-- Core VPN service (must NOT be exported) -->
         <service
             android:name=".core.OpenVPNService"
-            android:exported="true"
+            android:exported="false"
             android:permission="android.permission.BIND_VPN_SERVICE"
             android:foregroundServiceType="specialUse"
             android:process=":openvpn">
@@ -79,6 +93,7 @@
                 android:value="vpn"/>
         </service>
 
+        <!-- Optional public API service; set exported=false if you don't expose API -->
         <service
             android:name=".api.ExternalOpenVPNService"
             android:exported="true"
@@ -92,7 +107,7 @@
         <service
             android:name=".core.OpenVPNStatusService"
             android:exported="false"
-            android:process=":openvpn" />
+            android:process=":openvpn"/>
 
         <!-- Boot + lifecycle -->
         <receiver
@@ -110,26 +125,7 @@
             android:permission="android.permission.BIND_JOB_SERVICE"
             android:process=":openvpn"/>
 
-        <!-- Launch VPN dialog -->
-        <activity
-            android:name=".LaunchVPN"
-            android:autoRemoveFromRecents="true"
-            android:excludeFromRecents="true"
-            android:label="@string/app_name"
-            android:taskAffinity=".LaunchVPN"
-            android:theme="@style/blinkt.dialog"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-            </intent-filter>
-        </activity>
-
-	<activity
-    android:name="de.blinkt.openvpn.activities.LogWindow"
-    android:label="VPN Logs"
-    android:exported="false" />
-
+        <!-- Remote action/dialogs (unchanged) -->
         <activity
             android:name=".api.RemoteAction"
             android:launchMode="singleInstance"
@@ -140,7 +136,6 @@
             android:noHistory="true"
             android:exported="false"/>
 
-        <!-- API auth dialogs (kept as in your manifest) -->
         <activity
             android:name=".api.GrantPermissionsActivity"
             android:exported="true">
@@ -157,7 +152,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Aliases for quick actions -->
+        <!-- Quick action aliases -->
         <activity-alias
             android:name=".api.ConnectVPN"
             android:exported="true"
@@ -187,9 +182,5 @@
                 android:resource="@xml/file_paths"/>
         </provider>
         -->
-
-        <activity
-            android:name="de.blinkt.openvpn.ui.MainActivity"
-            android:exported="false"/>
     </application>
 </manifest>
