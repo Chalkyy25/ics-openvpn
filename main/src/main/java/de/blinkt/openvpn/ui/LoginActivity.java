@@ -24,16 +24,24 @@ import retrofit2.Response;
 public class LoginActivity extends Activity {
 
     private EditText etUser, etPass;
+    private Button btnLogin, btnOpenServers;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
+        // If already logged in, jump straight in
+        String existing = Prefs.getToken(this);
+        if (existing != null && !existing.isEmpty()) {
+            goToMain();
+            return;
+        }
+
         etUser = findViewById(R.id.etUsername);
         etPass = findViewById(R.id.etPassword);
-        Button btnLogin = findViewById(R.id.btnLogin);
-        Button btnOpenServers = findViewById(R.id.btnServers);
+        btnLogin = findViewById(R.id.btnLogin);
+        btnOpenServers = findViewById(R.id.btnServers);
 
         btnLogin.setOnClickListener(v -> doLogin());
         btnOpenServers.setOnClickListener(v ->
@@ -49,6 +57,8 @@ public class LoginActivity extends Activity {
             toast("Enter username and password");
             return;
         }
+
+        setUiEnabled(false);
 
         ApiService api = RetrofitClient.service();
         api.login(new LoginRequest(u, p)).enqueue(new Callback<>() {
@@ -70,19 +80,25 @@ public class LoginActivity extends Activity {
                     }
 
                     int userId = (body.user != null) ? body.user.id : 0;
+
+                    // Save API auth + OpenVPN creds (used when building VpnProfile)
                     Prefs.saveAuth(LoginActivity.this, body.token, userId);
+                    Prefs.saveVpnCreds(LoginActivity.this, u, p);
 
                     toast("Logged in");
                     goToMain();
 
                 } catch (Throwable t) {
                     toast("Login error: " + t.getMessage());
+                } finally {
+                    setUiEnabled(true);
                 }
             }
 
             @Override
             public void onFailure(@NonNull Call<AuthResponse> call, @NonNull Throwable t) {
                 toast("Network error: " + (t.getMessage() == null ? "unknown" : t.getMessage()));
+                setUiEnabled(true);
             }
         });
     }
@@ -97,6 +113,11 @@ public class LoginActivity extends Activity {
         } catch (Throwable t) {
             toast("Failed to open main screen: " + t.getMessage());
         }
+    }
+
+    private void setUiEnabled(boolean enabled) {
+        if (btnLogin != null) btnLogin.setEnabled(enabled);
+        if (btnOpenServers != null) btnOpenServers.setEnabled(enabled);
     }
 
     private static String safe(CharSequence cs) {

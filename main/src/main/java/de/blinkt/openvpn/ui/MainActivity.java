@@ -2,7 +2,9 @@ package de.blinkt.openvpn.ui;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.net.VpnService;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
@@ -16,11 +18,11 @@ import java.io.StringReader;
 import de.blinkt.openvpn.LaunchVPN;
 import de.blinkt.openvpn.R;
 import de.blinkt.openvpn.VpnProfile;
+import de.blinkt.openvpn.api.ApiService;
+import de.blinkt.openvpn.api.RetrofitClient;
 import de.blinkt.openvpn.core.ConfigParser;
 import de.blinkt.openvpn.core.ProfileManager;
 import de.blinkt.openvpn.util.Prefs;
-import de.blinkt.openvpn.api.ApiService;
-import de.blinkt.openvpn.api.RetrofitClient;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -29,7 +31,7 @@ import retrofit2.Response;
 public class MainActivity extends Activity {
 
     private static final int REQ_PICK_SERVER = 2001;
-    private static final int REQ_VPN_PREP   = 3001;
+    private static final int REQ_VPN_PREP    = 3001;
 
     private TextView tvServer;
     private Button btnConnect, btnPickServer, btnLogout;
@@ -42,11 +44,12 @@ public class MainActivity extends Activity {
 
     private String pendingProfileUUID; // used after VPN permission grant
 
-    @Override protected void onCreate(Bundle savedInstanceState) {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Bind views (these IDs match your XML)
+        // Bind views (match your activity_main.xml)
         tvServer      = req(R.id.tvServer);
         btnConnect    = req(R.id.btnConnect);
         btnPickServer = req(R.id.btnPickServer);
@@ -56,7 +59,7 @@ public class MainActivity extends Activity {
         token  = Prefs.getToken(this);
         userId = Prefs.getUserId(this);
 
-        // restore last selection if any
+        // Restore last selection if any
         serverId   = Prefs.getServerId(this);
         serverName = Prefs.getServerName(this);
         updateServerText();
@@ -78,8 +81,7 @@ public class MainActivity extends Activity {
         });
 
         btnLogout.setOnClickListener(v -> {
-            Prefs.clearAuth(this);
-            Prefs.setServer(this, 0, null);
+            Prefs.clearAll(this);
             startActivity(new Intent(this, LoginActivity.class));
             finish();
         });
@@ -113,10 +115,18 @@ public class MainActivity extends Activity {
                         return;
                     }
                     String ovpn = resp.body().string();
-                    if (ovpn.trim().isEmpty()) {
+                    if (ovpn == null || ovpn.trim().isEmpty()) {
                         toast("Server returned empty .ovpn");
                         return;
                     }
+
+                    // 🔎 Self-check against the real config we just fetched
+                    Log.d("AIOVPN", "OVPN bytes=" + ovpn.length()
+                            + " hasCA=" + ovpn.contains("<ca>")
+                            + " hasTA=" + ovpn.contains("<tls-auth>")
+                            + " hasKeyDir=" + ovpn.contains("key-direction")
+                            + " hasAuthUserPass=" + ovpn.contains("auth-user-pass"));
+
                     startVpnWithConfig(ovpn);
                 } catch (Exception e) {
                     toast("Config parse error: " + e.getMessage());
@@ -133,8 +143,9 @@ public class MainActivity extends Activity {
         });
     }
 
+
     private void startVpnWithConfig(String ovpn) throws Exception {
-        // Parse .ovpn → VpnProfile
+        // 1) Parse .ovpn → VpnProfile
         ConfigParser cp = new ConfigParser();
         cp.parseConfig(new StringReader(ovpn));
         VpnProfile profile = cp.convertProfile();
@@ -142,22 +153,33 @@ public class MainActivity extends Activity {
             toast("Invalid VPN profile");
             return;
         }
+
+        // 2) Friendly name
         profile.mName = "AIO • " + (serverName != null && !serverName.isEmpty() ? serverName : "Profile");
 
-        // Save into ICS profile store
+        // 3) Inject auth creds so no prompt is needed
+        try {
+            profile.mUsername = Prefs.getVpnUser(this);
+            profile.mPassword = Prefs.getVpnPass(this);
+            // If your fork exposes it, you can also:
+            // profile.mAuthenticationType = VpnProfile.TYPE_USERPASS;
+        } catch (Throwable ignore) {
+            // Different field names on some forks—tell me if you get a compile error.
+        }
+
+        // 4) Save profile (instance methods)
         ProfileManager pm = ProfileManager.getInstance(this);
         pm.addProfile(profile);
         ProfileManager.saveProfile(this, profile);
         pm.saveProfileList(this);
 
-        // Request VPN permission if needed
-        Intent prep = android.net.VpnService.prepare(this);
+        // 5) Request VPN permission if needed, then launch
+        Intent prep = VpnService.prepare(this);
         if (prep != null) {
             pendingProfileUUID = profile.getUUID().toString();
             startActivityForResult(prep, REQ_VPN_PREP);
             return;
         }
-
         launchVpn(profile.getUUID().toString());
     }
 
@@ -168,7 +190,8 @@ public class MainActivity extends Activity {
         toast("Connecting…");
     }
 
-    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == REQ_PICK_SERVER && resultCode == RESULT_OK && data != null) {
