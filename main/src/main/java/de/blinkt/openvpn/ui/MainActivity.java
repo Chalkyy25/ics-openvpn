@@ -30,11 +30,12 @@ import retrofit2.Response;
 
 public class MainActivity extends Activity {
 
+    private static final String TAG = "AIOVPN";
     private static final int REQ_PICK_SERVER = 2001;
     private static final int REQ_VPN_PREP    = 3001;
 
     private TextView tvServer;
-    private Button btnConnect, btnPickServer, btnLogout;
+    private Button btnConnect, btnPickServer, btnLogout, btnLogs;
     private ProgressBar progress;
 
     private Integer serverId = null;
@@ -54,15 +55,11 @@ public class MainActivity extends Activity {
         btnConnect    = req(R.id.btnConnect);
         btnPickServer = req(R.id.btnPickServer);
         btnLogout     = req(R.id.btnLogout);
+        btnLogs       = req(R.id.btnLogs);
         progress      = req(R.id.progress);
 
         token  = Prefs.getToken(this);
         userId = Prefs.getUserId(this);
-Button btnLogs = findViewById(R.id.btnLogs);
-btnLogs.setOnClickListener(v -> {
-    Intent i = new Intent(this, de.blinkt.openvpn.activities.LogWindow.class);
-    startActivity(i);
-});
 
         // If not logged in, go back to login
         if (token == null || token.isEmpty()) {
@@ -76,6 +73,7 @@ btnLogs.setOnClickListener(v -> {
         serverName = Prefs.getServerName(this);
         updateServerText();
 
+        // Listeners
         btnPickServer.setOnClickListener(v ->
                 startActivityForResult(new Intent(this, ServerPickerActivity.class), REQ_PICK_SERVER)
         );
@@ -93,6 +91,8 @@ btnLogs.setOnClickListener(v -> {
             startActivity(new Intent(this, LoginActivity.class));
             finish();
         });
+
+        btnLogs.setOnClickListener(v -> openLogWindow());
     }
 
     private void setLoading(boolean loading) {
@@ -100,6 +100,8 @@ btnLogs.setOnClickListener(v -> {
         btnConnect.setEnabled(!loading);
         btnPickServer.setEnabled(!loading);
         btnLogout.setEnabled(!loading);
+        // keep Logs button enabled so you can watch the handshake live
+        btnLogs.setEnabled(true);
     }
 
     private void updateServerText() {
@@ -129,7 +131,7 @@ btnLogs.setOnClickListener(v -> {
                     }
 
                     // Self-check against the real config we just fetched
-                    Log.d("AIOVPN", "OVPN bytes=" + ovpn.length()
+                    Log.d(TAG, "OVPN bytes=" + ovpn.length()
                             + " hasCA=" + ovpn.contains("<ca>")
                             + " hasTA=" + ovpn.contains("<tls-auth>")
                             + " hasKeyDir=" + ovpn.contains("key-direction")
@@ -170,12 +172,12 @@ btnLogs.setOnClickListener(v -> {
             profile.mPassword = Prefs.getVpnPass(this);
             // If your fork exposes it:
             // profile.mAuthenticationType = VpnProfile.TYPE_USERPASS;
-        } catch (Throwable ignore) {}
+        } catch (Throwable ignore) { /* different forks use different fields */ }
 
         // 4) Save profile (instance methods)
         ProfileManager pm = ProfileManager.getInstance(this);
         pm.addProfile(profile);
-        pm.saveProfile(this, profile);   // <-- instance, not static
+        pm.saveProfile(this, profile);
         pm.saveProfileList(this);
 
         // 5) Request VPN permission if needed, then launch
@@ -189,10 +191,23 @@ btnLogs.setOnClickListener(v -> {
     }
 
     private void launchVpn(String uuid) {
+        // (Optional) open the log window first so you see the whole handshake
+        openLogWindow();
+
         Intent i = new Intent(this, LaunchVPN.class);
         i.putExtra(LaunchVPN.EXTRA_KEY, uuid);
         startActivity(i); // only once
         toast("Connecting…");
+    }
+
+    private void openLogWindow() {
+        try {
+            Class<?> logWin = Class.forName("de.blinkt.openvpn.activities.LogWindow");
+            startActivity(new Intent(this, logWin));
+        } catch (ClassNotFoundException e) {
+            toast("Log window not in this build. Use MatLog or adb logcat.");
+            Log.i(TAG, "Tip: adb logcat -v time | grep -i \"OpenVPN|AIOVPN|VpnService|AUTH|TLS\"");
+        }
     }
 
     @Override
