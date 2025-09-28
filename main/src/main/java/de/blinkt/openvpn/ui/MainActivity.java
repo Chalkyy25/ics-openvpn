@@ -58,6 +58,18 @@ public class MainActivity extends Activity {
 
         token  = Prefs.getToken(this);
         userId = Prefs.getUserId(this);
+Button btnLogs = findViewById(R.id.btnLogs);
+btnLogs.setOnClickListener(v -> {
+    Intent i = new Intent(this, de.blinkt.openvpn.activities.LogWindow.class);
+    startActivity(i);
+});
+
+        // If not logged in, go back to login
+        if (token == null || token.isEmpty()) {
+            startActivity(new Intent(this, LoginActivity.class));
+            finish();
+            return;
+        }
 
         // Restore last selection if any
         serverId   = Prefs.getServerId(this);
@@ -71,10 +83,6 @@ public class MainActivity extends Activity {
         btnConnect.setOnClickListener(v -> {
             if (serverId == null || serverId <= 0) {
                 toast("Pick a server first");
-                return;
-            }
-            if (token == null || token.isEmpty()) {
-                toast("You’re not logged in. Please log in again.");
                 return;
             }
             fetchAndConnect();
@@ -106,7 +114,7 @@ public class MainActivity extends Activity {
         setLoading(true);
 
         ApiService api = RetrofitClient.service();
-        api.getOvpn("Bearer " + token, userId, serverId).enqueue(new Callback<>() {
+        api.getOvpn("Bearer " + token, userId, serverId).enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(@NonNull Call<ResponseBody> call, @NonNull Response<ResponseBody> resp) {
                 try {
@@ -120,7 +128,7 @@ public class MainActivity extends Activity {
                         return;
                     }
 
-                    // 🔎 Self-check against the real config we just fetched
+                    // Self-check against the real config we just fetched
                     Log.d("AIOVPN", "OVPN bytes=" + ovpn.length()
                             + " hasCA=" + ovpn.contains("<ca>")
                             + " hasTA=" + ovpn.contains("<tls-auth>")
@@ -143,7 +151,6 @@ public class MainActivity extends Activity {
         });
     }
 
-
     private void startVpnWithConfig(String ovpn) throws Exception {
         // 1) Parse .ovpn → VpnProfile
         ConfigParser cp = new ConfigParser();
@@ -161,16 +168,14 @@ public class MainActivity extends Activity {
         try {
             profile.mUsername = Prefs.getVpnUser(this);
             profile.mPassword = Prefs.getVpnPass(this);
-            // If your fork exposes it, you can also:
+            // If your fork exposes it:
             // profile.mAuthenticationType = VpnProfile.TYPE_USERPASS;
-        } catch (Throwable ignore) {
-            // Different field names on some forks—tell me if you get a compile error.
-        }
+        } catch (Throwable ignore) {}
 
         // 4) Save profile (instance methods)
         ProfileManager pm = ProfileManager.getInstance(this);
         pm.addProfile(profile);
-        ProfileManager.saveProfile(this, profile);
+        pm.saveProfile(this, profile);   // <-- instance, not static
         pm.saveProfileList(this);
 
         // 5) Request VPN permission if needed, then launch

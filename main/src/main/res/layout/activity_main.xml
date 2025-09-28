@@ -40,6 +40,12 @@
         android:text="LOG OUT"
         android:layout_marginTop="12dp" />
 
+    <Button
+    android:id="@+id/btnLogs"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="View Logs"/>
+
     <ProgressBar
         android:id="@+id/progress"
         style="?android:attr/progressBarStyleLarge"

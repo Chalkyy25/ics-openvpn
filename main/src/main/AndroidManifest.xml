@@ -125,6 +125,11 @@
             </intent-filter>
         </activity>
 
+	<activity
+    android:name="de.blinkt.openvpn.activities.LogWindow"
+    android:label="VPN Logs"
+    android:exported="false" />
+
         <activity
             android:name=".api.RemoteAction"
             android:launchMode="singleInstance"
