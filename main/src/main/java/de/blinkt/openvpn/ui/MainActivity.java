@@ -1,3 +1,4 @@
+// MainActivity.java
 package de.blinkt.openvpn.ui;
 
 import android.app.Activity;
@@ -51,14 +52,8 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Force verbose logging to help diagnose "no log" issues
-        try {
-            VpnStatus.updateLogVerbosity(5); // 0..5
-            VpnStatus.setLogToLogcat(true);
-            VpnStatus.logInfo("AIOVPN: app started; forcing verbose logs");
-        } catch (Throwable t) {
-            Log.w(TAG, "Could not force VpnStatus verbosity", t);
-        }
+        // (Your fork's VpnStatus doesn't expose verbosity toggles; just log a marker.)
+        try { VpnStatus.logInfo("AIOVPN: app started"); } catch (Throwable ignore) {}
 
         // Bind views
         tvServer      = req(R.id.tvServer);
@@ -71,7 +66,6 @@ public class MainActivity extends Activity {
         token  = Prefs.getToken(this);
         userId = Prefs.getUserId(this);
 
-        // If not logged in, go back to login
         if (token == null || token.isEmpty()) {
             Log.d(TAG, "No token; redirecting to LoginActivity");
             startActivity(new Intent(this, LoginActivity.class));
@@ -79,12 +73,10 @@ public class MainActivity extends Activity {
             return;
         }
 
-        // Restore last selection if any
         serverId   = Prefs.getServerId(this);
         serverName = Prefs.getServerName(this);
         updateServerText();
 
-        // Listeners
         btnPickServer.setOnClickListener(v ->
                 startActivityForResult(new Intent(this, ServerPickerActivity.class), REQ_PICK_SERVER)
         );
@@ -111,7 +103,6 @@ public class MainActivity extends Activity {
         btnConnect.setEnabled(!loading);
         btnPickServer.setEnabled(!loading);
         btnLogout.setEnabled(!loading);
-        // keep Logs button enabled so you can open it anytime
         btnLogs.setEnabled(true);
     }
 
@@ -145,7 +136,6 @@ public class MainActivity extends Activity {
                         return;
                     }
 
-                    // Self-check against the real config we just fetched
                     Log.d(TAG, "OVPN bytes=" + ovpn.length()
                             + " hasCA=" + ovpn.contains("<ca>")
                             + " hasTA=" + ovpn.contains("<tls-auth>")
@@ -173,7 +163,6 @@ public class MainActivity extends Activity {
     private void startVpnWithConfig(String ovpn) throws Exception {
         Log.d(TAG, "Parsing .ovpn into VpnProfile…");
 
-        // 1) Parse .ovpn → VpnProfile
         ConfigParser cp = new ConfigParser();
         cp.parseConfig(new StringReader(ovpn));
         VpnProfile profile = cp.convertProfile();
@@ -183,24 +172,20 @@ public class MainActivity extends Activity {
             return;
         }
 
-        // 2) Friendly name
         profile.mName = "AIO • " + (serverName != null && !serverName.isEmpty() ? serverName : "Profile");
         Log.d(TAG, "Profile parsed. Name=" + profile.mName);
 
-        // 3) Inject auth creds so no prompt is needed
         try {
             profile.mUsername = Prefs.getVpnUser(this);
             profile.mPassword = Prefs.getVpnPass(this);
-            // Some forks require setting the auth type constant
             try {
                 profile.mAuthenticationType = de.blinkt.openvpn.VpnProfile.TYPE_USERPASS;
-            } catch (Throwable ignored) { /* not all forks expose this */ }
-            Log.d(TAG, "Injected auth creds: user=" + (profile.mUsername == null ? "(null)" : "(set)"));
+            } catch (Throwable ignored) {}
+            Log.d(TAG, "Injected auth creds (username set? " + (profile.mUsername != null) + ")");
         } catch (Throwable ignore) {
             Log.w(TAG, "Could not inject username/password into profile");
         }
 
-        // 4) Save profile
         ProfileManager pm = ProfileManager.getInstance(this);
         pm.addProfile(profile);
         pm.saveProfile(this, profile);
@@ -208,7 +193,6 @@ public class MainActivity extends Activity {
         String uuid = profile.getUUID().toString();
         Log.d(TAG, "Saved profile UUID=" + uuid);
 
-        // 5) Request VPN permission if needed, then launch
         Intent prep = VpnService.prepare(this);
         Log.d(TAG, "VpnService.prepare -> " + (prep == null ? "granted" : "needs dialog"));
         if (prep != null) {
@@ -223,7 +207,7 @@ public class MainActivity extends Activity {
         Log.d(TAG, "Launching LaunchVPN with UUID=" + uuid);
         Intent i = new Intent(this, LaunchVPN.class);
         i.putExtra(LaunchVPN.EXTRA_KEY, uuid);
-        startActivity(i); // only once
+        startActivity(i);
         toast("Connecting…");
     }
 
