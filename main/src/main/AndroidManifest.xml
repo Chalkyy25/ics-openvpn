@@ -81,7 +81,7 @@
         <!-- Core VPN service (must NOT be exported) -->
         <service
             android:name=".core.OpenVPNService"
-            android:exported="false"
+            android:exported="true"
             android:permission="android.permission.BIND_VPN_SERVICE"
             android:foregroundServiceType="specialUse"
             android:process=":openvpn">
