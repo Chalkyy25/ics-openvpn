@@ -22,6 +22,7 @@ import de.blinkt.openvpn.api.ApiService;
 import de.blinkt.openvpn.api.RetrofitClient;
 import de.blinkt.openvpn.core.ConfigParser;
 import de.blinkt.openvpn.core.ProfileManager;
+import de.blinkt.openvpn.core.VpnStatus;
 import de.blinkt.openvpn.util.Prefs;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
@@ -50,7 +51,16 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Bind views (match your activity_main.xml)
+        // Force verbose logging to help diagnose "no log" issues
+        try {
+            VpnStatus.updateLogVerbosity(5); // 0..5
+            VpnStatus.setLogToLogcat(true);
+            VpnStatus.logInfo("AIOVPN: app started; forcing verbose logs");
+        } catch (Throwable t) {
+            Log.w(TAG, "Could not force VpnStatus verbosity", t);
+        }
+
+        // Bind views
         tvServer      = req(R.id.tvServer);
         btnConnect    = req(R.id.btnConnect);
         btnPickServer = req(R.id.btnPickServer);
@@ -63,6 +73,7 @@ public class MainActivity extends Activity {
 
         // If not logged in, go back to login
         if (token == null || token.isEmpty()) {
+            Log.d(TAG, "No token; redirecting to LoginActivity");
             startActivity(new Intent(this, LoginActivity.class));
             finish();
             return;
@@ -100,7 +111,7 @@ public class MainActivity extends Activity {
         btnConnect.setEnabled(!loading);
         btnPickServer.setEnabled(!loading);
         btnLogout.setEnabled(!loading);
-        // keep Logs button enabled so you can watch the handshake live
+        // keep Logs button enabled so you can open it anytime
         btnLogs.setEnabled(true);
     }
 
@@ -114,6 +125,7 @@ public class MainActivity extends Activity {
 
     private void fetchAndConnect() {
         setLoading(true);
+        Log.d(TAG, "Fetching .ovpn for userId=" + userId + " serverId=" + serverId);
 
         ApiService api = RetrofitClient.service();
         api.getOvpn("Bearer " + token, userId, serverId).enqueue(new Callback<ResponseBody>() {
@@ -121,11 +133,14 @@ public class MainActivity extends Activity {
             public void onResponse(@NonNull Call<ResponseBody> call, @NonNull Response<ResponseBody> resp) {
                 try {
                     if (!resp.isSuccessful() || resp.body() == null) {
-                        toast("Fetch .ovpn failed (HTTP " + resp.code() + ")");
+                        String msg = "Fetch .ovpn failed (HTTP " + resp.code() + ")";
+                        Log.e(TAG, msg);
+                        toast(msg);
                         return;
                     }
                     String ovpn = resp.body().string();
                     if (ovpn == null || ovpn.trim().isEmpty()) {
+                        Log.e(TAG, "Server returned empty .ovpn");
                         toast("Server returned empty .ovpn");
                         return;
                     }
@@ -139,6 +154,7 @@ public class MainActivity extends Activity {
 
                     startVpnWithConfig(ovpn);
                 } catch (Exception e) {
+                    Log.e(TAG, "Config parse error", e);
                     toast("Config parse error: " + e.getMessage());
                 } finally {
                     setLoading(false);
@@ -147,6 +163,7 @@ public class MainActivity extends Activity {
 
             @Override
             public void onFailure(@NonNull Call<ResponseBody> call, @NonNull Throwable t) {
+                Log.e(TAG, "Network error fetching .ovpn", t);
                 toast(t.getMessage() == null ? "Network error" : t.getMessage());
                 setLoading(false);
             }
@@ -154,46 +171,56 @@ public class MainActivity extends Activity {
     }
 
     private void startVpnWithConfig(String ovpn) throws Exception {
+        Log.d(TAG, "Parsing .ovpn into VpnProfile…");
+
         // 1) Parse .ovpn → VpnProfile
         ConfigParser cp = new ConfigParser();
         cp.parseConfig(new StringReader(ovpn));
         VpnProfile profile = cp.convertProfile();
         if (profile == null) {
+            Log.e(TAG, "convertProfile() returned null");
             toast("Invalid VPN profile");
             return;
         }
 
         // 2) Friendly name
         profile.mName = "AIO • " + (serverName != null && !serverName.isEmpty() ? serverName : "Profile");
+        Log.d(TAG, "Profile parsed. Name=" + profile.mName);
 
         // 3) Inject auth creds so no prompt is needed
         try {
             profile.mUsername = Prefs.getVpnUser(this);
             profile.mPassword = Prefs.getVpnPass(this);
-            // If your fork exposes it:
-            // profile.mAuthenticationType = VpnProfile.TYPE_USERPASS;
-        } catch (Throwable ignore) { /* different forks use different fields */ }
+            // Some forks require setting the auth type constant
+            try {
+                profile.mAuthenticationType = de.blinkt.openvpn.VpnProfile.TYPE_USERPASS;
+            } catch (Throwable ignored) { /* not all forks expose this */ }
+            Log.d(TAG, "Injected auth creds: user=" + (profile.mUsername == null ? "(null)" : "(set)"));
+        } catch (Throwable ignore) {
+            Log.w(TAG, "Could not inject username/password into profile");
+        }
 
-        // 4) Save profile (instance methods)
+        // 4) Save profile
         ProfileManager pm = ProfileManager.getInstance(this);
         pm.addProfile(profile);
         pm.saveProfile(this, profile);
         pm.saveProfileList(this);
+        String uuid = profile.getUUID().toString();
+        Log.d(TAG, "Saved profile UUID=" + uuid);
 
         // 5) Request VPN permission if needed, then launch
         Intent prep = VpnService.prepare(this);
+        Log.d(TAG, "VpnService.prepare -> " + (prep == null ? "granted" : "needs dialog"));
         if (prep != null) {
-            pendingProfileUUID = profile.getUUID().toString();
+            pendingProfileUUID = uuid;
             startActivityForResult(prep, REQ_VPN_PREP);
             return;
         }
-        launchVpn(profile.getUUID().toString());
+        launchVpn(uuid);
     }
 
     private void launchVpn(String uuid) {
-        // (Optional) open the log window first so you see the whole handshake
-        openLogWindow();
-
+        Log.d(TAG, "Launching LaunchVPN with UUID=" + uuid);
         Intent i = new Intent(this, LaunchVPN.class);
         i.putExtra(LaunchVPN.EXTRA_KEY, uuid);
         startActivity(i); // only once
@@ -206,7 +233,7 @@ public class MainActivity extends Activity {
             startActivity(new Intent(this, logWin));
         } catch (ClassNotFoundException e) {
             toast("Log window not in this build. Use MatLog or adb logcat.");
-            Log.i(TAG, "Tip: adb logcat -v time | grep -i \"OpenVPN|AIOVPN|VpnService|AUTH|TLS\"");
+            Log.i(TAG, "Tip: adb logcat -v time | grep -i \"OpenVPN\\|AIOVPN\\|VpnService\\|AUTH\\|TLS\"");
         }
     }
 
@@ -219,10 +246,12 @@ public class MainActivity extends Activity {
             serverName = data.getStringExtra("server_name");
             Prefs.setServer(this, serverId, serverName);
             updateServerText();
+            Log.d(TAG, "Server selected id=" + serverId + " name=" + serverName);
             return;
         }
 
         if (requestCode == REQ_VPN_PREP) {
+            Log.d(TAG, "VPN permission result=" + (resultCode == RESULT_OK ? "OK" : "DENIED"));
             if (resultCode == RESULT_OK && pendingProfileUUID != null) {
                 launchVpn(pendingProfileUUID);
             } else {
