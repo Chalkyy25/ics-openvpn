@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:card="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/cardRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="10dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
+    android:foreground="?attr/selectableItemBackgroundBorderless"
+    card:cardUseCompatPadding="false"
+    card:cardCornerRadius="18dp"
+    card:cardElevation="0dp"
+    card:cardBackgroundColor="@android:color/transparent">
+
+    <!-- Inner surface so the glow can sit outside the rounded card -->
+    <LinearLayout
+        android:id="@+id/container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:background="@drawable/aio_card_bg_selector">
+
+        <TextView
+            android:id="@+id/tvName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Server Name"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:textColor="@color/aio_text"
+            android:shadowColor="@color/aio_glow_purple"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="3"/>
+
+        <TextView
+            android:id="@+id/tvSubtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="1.2.3.4"
+            android:textSize="13sp"
+            android:textColor="@color/aio_text_muted"/>
+    </LinearLayout>
+</androidx.cardview.widget.CardView>

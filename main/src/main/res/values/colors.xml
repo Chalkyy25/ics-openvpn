@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- 🌌 AIO VPN Brand Core -->
+    <color name="aio_primary">#A020F0</color>          <!-- Neon Purple -->
+    <color name="aio_primary_dark">#6B00B6</color>     <!-- Gradient Darker Purple -->
+    <color name="aio_secondary">#FF00A8</color>        <!-- Cyber Pink -->
+    <color name="aio_tertiary">#00C6FF</color>         <!-- Electric Blue -->
+
+    <!-- 🟢 Connection States -->
+    <color name="aio_success">#39FF14</color>          <!-- Connected / Active -->
+    <color name="aio_error">#FF3B30</color>            <!-- Disconnected / Error -->
+    <color name="aio_warning">#FFC400</color>          <!-- Pending / Caution -->
+
+    <!-- ⚫ Dark Theme Backgrounds -->
+    <color name="aio_bg_dark">#0B0B1A</color>
+    <color name="aio_bg_dark_alt">#12122A</color>
+    <color name="aio_surface">#1A1B3A</color>
+    <color name="aio_card_bg_dark">#14132A</color>
+    <color name="aio_panel">#12122A</color> <!-- for bottom nav -->
+
+    <!-- ✨ Glow & Borders -->
+    <color name="aio_border">#262646</color>
+    <color name="aio_glow_purple">#99A020F0</color>
+    <color name="aio_glow_pink">#99FF00A8</color>
+    <color name="aio_glow_green">#9939FF14</color>
+
+    <!-- 📝 Text -->
+    <color name="aio_text">#EDEDED</color>
+    <color name="aio_text_muted">#A0A0B2</color>
+    <color name="aio_text_inverse">#0B0B1A</color>
+
+    <!-- 🎨 Buttons -->
+    <color name="aio_button_bg">@color/aio_primary</color>
+    <color name="aio_button_bg_pressed">@color/aio_secondary</color>
+    <color name="aio_button_text">@color/aio_text</color>
+
+    <!-- 🧭 Nav / Icons -->
+    <color name="aio_nav_icon_active">@color/aio_primary</color>
+    <color name="aio_nav_icon_inactive">@color/aio_text_muted</color>
+
+</resources>

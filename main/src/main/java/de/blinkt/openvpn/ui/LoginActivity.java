@@ -1,14 +1,18 @@
+// LoginActivity.java
 package de.blinkt.openvpn.ui;
 
-import android.app.Activity;
-import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.TextUtils;
+import android.view.inputmethod.EditorInfo;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
 
 import de.blinkt.openvpn.R;
 import de.blinkt.openvpn.api.ApiService;
@@ -21,19 +25,21 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class LoginActivity extends Activity {
+public class LoginActivity extends AppCompatActivity {
 
     private EditText etUser, etPass;
-    private Button btnLogin, btnOpenServers;
+    private Button btnLogin;
+    private View btnOpenServers;    // hidden on this screen
+    private ProgressBar progress;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
-        // If already logged in, jump straight in
+        // If already logged in, jump straight to Home and clear back stack
         String existing = Prefs.getToken(this);
-        if (existing != null && !existing.isEmpty()) {
+        if (!TextUtils.isEmpty(existing)) {
             goToMain();
             return;
         }
@@ -42,89 +48,100 @@ public class LoginActivity extends Activity {
         etPass = findViewById(R.id.etPassword);
         btnLogin = findViewById(R.id.btnLogin);
         btnOpenServers = findViewById(R.id.btnServers);
+        progress = findViewById(R.id.progress); // Add an indeterminate ProgressBar with this id
+
+        // Server picker requires auth — keep it hidden here
+        if (btnOpenServers != null) btnOpenServers.setVisibility(View.GONE);
 
         btnLogin.setOnClickListener(v -> doLogin());
-        btnOpenServers.setOnClickListener(v ->
-                startActivity(new Intent(this, ServerPickerActivity.class))
-        );
+
+        // Support keyboard "Done" to submit
+        if (etPass != null) {
+            etPass.setOnEditorActionListener((v, actionId, event) -> {
+                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                    doLogin();
+                    return true;
+                }
+                return false;
+            });
+        }
     }
 
     private void doLogin() {
-        String u = safe(etUser.getText());
-        String p = safe(etPass.getText());
+        String u = safeText(etUser);
+        String p = safeText(etPass);
 
         if (u.isEmpty() || p.isEmpty()) {
             toast("Enter username and password");
             return;
         }
 
-        setUiEnabled(false);
+        setLoading(true);
 
         ApiService api = RetrofitClient.service();
-        api.login(new LoginRequest(u, p)).enqueue(new Callback<>() {
+        Call<AuthResponse> call = api.login(new LoginRequest(u, p));
+        call.enqueue(new Callback<AuthResponse>() {
             @Override
-            public void onResponse(@NonNull Call<AuthResponse> call, @NonNull Response<AuthResponse> resp) {
+            public void onResponse(Call<AuthResponse> call, Response<AuthResponse> resp) {
                 try {
                     if (!resp.isSuccessful()) {
-                        String msg = "HTTP " + resp.code();
+                        String msg = "Login failed (HTTP " + resp.code() + ")";
                         ResponseBody eb = resp.errorBody();
-                        if (eb != null) msg += " - " + eb.string();
-                        toast("Login failed: " + msg);
+                        if (eb != null) {
+                            try { msg += ": " + eb.string(); } catch (Exception ignored) {}
+                        }
+                        toast(msg);
                         return;
                     }
 
                     AuthResponse body = resp.body();
-                    if (body == null || body.token == null || body.token.isEmpty()) {
+                    if (body == null || TextUtils.isEmpty(body.token)) {
                         toast("Login failed: empty response");
                         return;
                     }
 
                     int userId = (body.user != null) ? body.user.id : 0;
 
-                    // Save API auth + OpenVPN creds (used when building VpnProfile)
+                    // Save API token/userId and the VPN creds (used when building VpnProfile)
                     Prefs.saveAuth(LoginActivity.this, body.token, userId);
                     Prefs.saveVpnCreds(LoginActivity.this, u, p);
 
-                    toast("Logged in");
+                    // Proceed to Home — clear the back stack so Back won’t return here
                     goToMain();
 
-                } catch (Throwable t) {
-                    toast("Login error: " + t.getMessage());
                 } finally {
-                    setUiEnabled(true);
+                    // If goToMain() runs, activity is finishing; this is harmless.
+                    setLoading(false);
                 }
             }
 
             @Override
-            public void onFailure(@NonNull Call<AuthResponse> call, @NonNull Throwable t) {
-                toast("Network error: " + (t.getMessage() == null ? "unknown" : t.getMessage()));
-                setUiEnabled(true);
+            public void onFailure(Call<AuthResponse> call, Throwable t) {
+                toast(t.getMessage() == null ? "Network error" : t.getMessage());
+                setLoading(false);
             }
         });
     }
 
     private void goToMain() {
-        try {
-            Intent i = new Intent(LoginActivity.this, MainActivity.class);
-            startActivity(i);
-            finish();
-        } catch (ActivityNotFoundException e) {
-            toast("Main screen not found. Check manifest class name: " + e.getMessage());
-        } catch (Throwable t) {
-            toast("Failed to open main screen: " + t.getMessage());
-        }
+        Intent i = new Intent(this, MainActivity.class);
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(i);
+        finish();
     }
 
-    private void setUiEnabled(boolean enabled) {
-        if (btnLogin != null) btnLogin.setEnabled(enabled);
-        if (btnOpenServers != null) btnOpenServers.setEnabled(enabled);
+    private void setLoading(boolean loading) {
+        if (progress != null) progress.setVisibility(loading ? View.VISIBLE : View.GONE);
+        if (btnLogin != null) btnLogin.setEnabled(!loading);
+        if (etUser != null) etUser.setEnabled(!loading);
+        if (etPass != null) etPass.setEnabled(!loading);
     }
 
-    private static String safe(CharSequence cs) {
-        return cs == null ? "" : cs.toString().trim();
+    private static String safeText(EditText et) {
+        return et == null || et.getText() == null ? "" : et.getText().toString().trim();
     }
 
     private void toast(String s) {
-        Toast.makeText(this, s, Toast.LENGTH_LONG).show();
+        Toast.makeText(this, s, Toast.LENGTH_SHORT).show();
     }
 }

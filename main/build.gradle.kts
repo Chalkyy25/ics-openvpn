@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 import com.android.build.gradle.api.ApplicationVariant
 import org.gradle.api.Action
 import java.io.File
@@ -14,35 +16,16 @@ android {
     ndkVersion = "28.0.13004108"
 
     defaultConfig {
-        applicationId = "uk.co.aiovpn.app"   // AIO VPN package id
+        applicationId = "uk.co.aiovpn.app"
         minSdk = 21
         targetSdk = 35
         versionCode = 216
         versionName = "0.7.61"
 
-        externalNativeBuild {
-            cmake { /* arguments += "-DCMAKE_VERBOSE_MAKEFILE=1" */ }
-
-        }
+        externalNativeBuild { cmake { } }
     }
 
-splits {
-        abi {
-            isEnable = true
-            reset()
-            include("arm64-v8a", "armeabi-v7a", "x86_64")
-            isUniversalApk = false
-        }
-        density { isEnable = false }
-    }
-
-
-    buildFeatures {
-        aidl = true
-        buildConfig = true
-    }
-
-    // Keep splits off to produce a single universal APK in CI
+    // single universal APK by default (you can re-enable per-ABI later)
     splits {
         abi {
             isEnable = false
@@ -51,41 +34,60 @@ splits {
         density { isEnable = false }
     }
 
-    // If you build App Bundles later, don’t split by language
-    bundle {
-        language { enableSplit = false }
+    buildFeatures {
+        aidl = true
+        buildConfig = true
     }
+
+    // App Bundles: don’t split by language
+    bundle { language { enableSplit = false } }
 
     externalNativeBuild {
-        cmake {
-            path = File("${projectDir}/src/main/cpp/CMakeLists.txt")
-        }
+        cmake { path = File("${projectDir}/src/main/cpp/CMakeLists.txt") }
     }
 
+    // -------------------------
+    // SOURCE SETS
+    // -------------------------
     sourceSets {
+        // Core app
         getByName("main") {
             assets.srcDirs("src/main/assets", "build/ovpnassets")
+            // Keep AIDL only in main to avoid conflicts:
+            // aidl.srcDirs("src/main/aidl")
         }
-        create("xui") { }
+
+        // Create the XUI overlay source set (separate from main)
+        create("xui") {
+            java.srcDirs("src/xui/java")
+            res.srcDirs("src/xui/res")
+            assets.srcDirs("src/xui/assets")
+            // If you later add a manifest for XUI:
+            // manifest.srcFile("src/xui/AndroidManifest.xml")
+            // Do NOT add aidl here — use main’s AIDL only.
+        }
+
+        // Optional: create skeleton source set (you’re filtering it out below)
         create("skeleton") { }
-        getByName("debug") { }
-        getByName("release") { }
+
+        // standard variants
+        getByName("debug")  { }
+        getByName("release"){ }
     }
 
+    // -------------------------
+    // SIGNING
+    // -------------------------
     signingConfigs {
         create("release") {
             val keystoreFile: String? by project
             storeFile = keystoreFile?.let { file(it) }
-
             val keystorePassword: String? by project
             storePassword = keystorePassword
-
             val keystoreAliasPassword: String? by project
             keyPassword = keystoreAliasPassword
-
             val keystoreAlias: String? by project
             keyAlias = keystoreAlias
-
             enableV1Signing = true
             enableV2Signing = true
         }
@@ -93,30 +95,29 @@ splits {
         create("releaseOvpn2") {
             val keystoreO2File: String? by project
             storeFile = keystoreO2File?.let { file(it) }
-
             val keystoreO2Password: String? by project
             storePassword = keystoreO2Password
-
             val keystoreO2AliasPassword: String? by project
             keyPassword = keystoreO2AliasPassword
-
             val keystoreO2Alias: String? by project
             keyAlias = keystoreO2Alias
-
             enableV1Signing = true
             enableV2Signing = true
         }
     }
 
+    // -------------------------
+    // LINT
+    // -------------------------
     lint {
-        enable += setOf(
-            "BackButton", "EasterEgg", "StopShip",
-            "IconExpectedSize", "GradleDynamicVersion", "NewerVersionAvailable"
-        )
-        checkOnly += setOf("ImpliedQuantity", "MissingQuantity")
-        disable += setOf("MissingTranslation", "UnsafeNativeCodeLocation")
+        enable += setOf("BackButton","EasterEgg","StopShip","IconExpectedSize","GradleDynamicVersion","NewerVersionAvailable")
+        checkOnly += setOf("ImpliedQuantity","MissingQuantity")
+        disable += setOf("MissingTranslation","UnsafeNativeCodeLocation")
     }
 
+    // -------------------------
+    // FLAVORS
+    // -------------------------
     flavorDimensions += listOf("implementation", "ovpnimpl")
 
     productFlavors {
@@ -137,7 +138,7 @@ splits {
         }
     }
 
-    // Skip building the skeleton flavor (keeps CI fast & avoids its errors)
+    // Skip skeleton variants
     @Suppress("DEPRECATION")
     variantFilter {
         if (flavors.any { it.name == "skeleton" }) {
@@ -158,24 +159,12 @@ splits {
     }
 
     packaging {
-        jniLibs {
-            useLegacyPackaging = true
-        }
+        jniLibs { useLegacyPackaging = true }
         resources {
-            // Prevent META-INF duplicate clashes during packaging
             excludes += setOf(
-                "META-INF/DEPENDENCIES",
-                "META-INF/LICENSE",
-                "META-INF/LICENSE.txt",
-                "META-INF/NOTICE",
-                "META-INF/NOTICE.txt",
-                "META-INF/LICENSE*",
-                "META-INF/AL2.0",
-                "META-INF/LGPL2.1",
-                "META-INF/*.kotlin_module",
-                "META-INF/kotlin-tooling-metadata.json",
-                "META-INF/*.version",
-                "META-INF/gradle/incremental.annotation.processors"
+                "META-INF/DEPENDENCIES","META-INF/LICENSE","META-INF/LICENSE.txt","META-INF/NOTICE","META-INF/NOTICE.txt",
+                "META-INF/LICENSE*","META-INF/AL2.0","META-INF/LGPL2.1","META-INF/*.kotlin_module",
+                "META-INF/kotlin-tooling-metadata.json","META-INF/*.version","META-INF/gradle/incremental.annotation.processors"
             )
         }
     }
@@ -185,13 +174,10 @@ splits {
             signing {
                 val keystoreTPFile: String? by project
                 storeFile = keystoreTPFile?.let { file(it) }
-
                 val keystoreTPPassword: String? by project
                 storePassword = keystoreTPPassword
-
                 val keystoreTPAliasPassword: String? by project
                 keyPassword = keystoreTPAliasPassword
-
                 val keystoreTPAlias: String? by project
                 keyAlias = keystoreTPAlias
 
@@ -210,28 +196,24 @@ splits {
     kotlinOptions { jvmTarget = "17" }
 }
 
-/* ----- SWIG / OpenVPN3 codegen integration (unchanged logic) ----- */
+/* ----- SWIG / OpenVPN3 codegen integration ----- */
 var swigcmd = "swig"
-if (file("/opt/homebrew/bin/swig").exists())
-    swigcmd = "/opt/homebrew/bin/swig"
-else if (file("/usr/local/bin/swig").exists())
-    swigcmd = "/usr/local/bin/swig"
+if (file("/opt/homebrew/bin/swig").exists()) swigcmd = "/opt/homebrew/bin/swig"
+else if (file("/usr/local/bin/swig").exists()) swigcmd = "/usr/local/bin/swig"
 
 fun registerGenTask(variantName: String, variantDirName: String): File {
-    val baseDir = File(buildDir, "generated/source/ovpn3swig/${variantDirName}")
+    val baseDir = File(buildDir, "generated/source/ovpn3swig/$variantDirName")
     val genDir = File(baseDir, "net/openvpn/ovpn3")
 
-    tasks.register<Exec>("generateOpenVPN3Swig${variantName}") {
+    tasks.register<Exec>("generateOpenVPN3Swig$variantName") {
         doFirst { mkdir(genDir) }
         commandLine(
-            listOf(
-                swigcmd, "-outdir", genDir, "-outcurrentdir", "-c++", "-java",
-                "-package", "net.openvpn.ovpn3",
-                "-Isrc/main/cpp/openvpn3/client", "-Isrc/main/cpp/openvpn3/",
-                "-DOPENVPN_PLATFORM_ANDROID",
-                "-o", "${genDir}/ovpncli_wrap.cxx", "-oh", "${genDir}/ovpncli_wrap.h",
-                "src/main/cpp/openvpn3/client/ovpncli.i"
-            )
+            swigcmd, "-outdir", genDir, "-outcurrentdir", "-c++", "-java",
+            "-package", "net.openvpn.ovpn3",
+            "-Isrc/main/cpp/openvpn3/client", "-Isrc/main/cpp/openvpn3/",
+            "-DOPENVPN_PLATFORM_ANDROID",
+            "-o", "${genDir}/ovpncli_wrap.cxx", "-oh", "${genDir}/ovpncli_wrap.h",
+            "src/main/cpp/openvpn3/client/ovpncli.i"
         )
         inputs.files("src/main/cpp/openvpn3/client/ovpncli.i")
         outputs.dir(genDir)
@@ -249,7 +231,7 @@ android.applicationVariants.all(object : Action<ApplicationVariant> {
 })
 
 dependencies {
-    // Networking (panel login + HTTP)
+    // Networking
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
@@ -274,10 +256,10 @@ dependencies {
     implementation(libs.androidx.webkit)
     implementation(libs.android.view.material)
 
-    // Kotlin stdlib (from versions catalog)
+    // Kotlin stdlib
     implementation(libs.kotlin)
 
-    // Charts & extra HTTP (from versions catalog if used)
+    // Extras
     implementation(libs.mpandroidchart)
     implementation(libs.square.okhttp)
 

@@ -1,182 +1,167 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          xmlns:tools="http://schemas.android.com/tools">
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Permissions -->
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-    <!-- Remove if you don't read files from external storage -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" tools:targetApi="33"/>
+    <!-- 🌐 Core Permissions -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-    <!-- Keep only if you truly need to list all packages (for Allowed Apps picker). -->
+    <!-- 🧩 Foreground Service (Android 14+ special use for VPN) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
+    <!-- 🔔 Notifications (runtime-requested on API 33+) -->
     <uses-permission
-        android:name="android.permission.QUERY_ALL_PACKAGES"
-        tools:ignore="QueryAllPackagesPermission"/>
+        android:name="android.permission.POST_NOTIFICATIONS"
+        tools:targetApi="33" />
+
+    <!-- 📺 Optional TV Support -->
+    <uses-feature android:name="android.software.leanback" android:required="false" />
 
     <application
-        android:name=".core.ICSOpenVPNApplication"
+        android:name="de.blinkt.openvpn.core.ICSOpenVPNApplication"
         android:allowBackup="true"
         android:appCategory="productivity"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/blinkt"
+        android:theme="@style/Theme.AIOVPN.Dark"
+        android:usesCleartextTraffic="false"
         android:networkSecurityConfig="@xml/network_security_config"
         tools:ignore="UnusedAttribute">
 
-        <!-- App branding & API base URL for RetrofitClient -->
-        <meta-data android:name="AIOVPN_APP_NAME" android:value="AIO VPN"/>
-        <meta-data android:name="AIOVPN_API_BASE_URL" android:value="https://aiovpn.co.uk/api"/>
+        <!-- 💠 Brand metadata -->
+        <meta-data android:name="AIOVPN_APP_NAME" android:value="AIO VPN" />
+        <meta-data android:name="AIOVPN_API_BASE_URL" android:value="https://aiovpn.co.uk/api" />
 
+        <!-- Managed config (optional) -->
         <meta-data
             android:name="android.content.APP_RESTRICTIONS"
-            android:resource="@xml/app_restrictions"/>
+            android:resource="@xml/app_restrictions" />
 
-        <!-- Launcher (only this activity has MAIN/LAUNCHER) -->
+        <!-- 🎬 TV banner support -->
+
+        <!-- 🏠 Launcher (Login first) -->
         <activity
             android:name="de.blinkt.openvpn.ui.LoginActivity"
-            android:exported="true">
+            android:exported="true"
+            android:theme="@style/Theme.AIOVPN.Dark">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <!-- Optional TV launcher -->
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <!-- Post-login main screen -->
+        <!-- 🧭 Main activity (post-login) -->
         <activity
             android:name="de.blinkt.openvpn.ui.MainActivity"
-            android:exported="false"/>
+            android:exported="false"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.AIOVPN.Dark" />
 
-        <!-- Server picker -->
+        <!-- 🌍 Server picker -->
         <activity
             android:name="de.blinkt.openvpn.ui.ServerPickerActivity"
-            android:exported="false"/>
+            android:exported="false"
+            android:label="Choose Server"
+            android:theme="@style/Theme.AIOVPN.Dark" />
 
-        <!-- In-app OpenVPN log window (MANUAL open only; no intent-filter) -->
+        <!-- 🚀 LaunchVPN shim -->
         <activity
-            android:name="de.blinkt.openvpn.activities.LogWindow"
-            android:label="VPN Logs"
-            android:exported="false"/>
-
-        <!-- LaunchVPN shim dialog used by ICS to start a profile
-             NOTE: no MAIN intent here, we only start it programmatically -->
-        <activity
-            android:name=".LaunchVPN"
+            android:name="de.blinkt.openvpn.LaunchVPN"
+            android:exported="true"
             android:autoRemoveFromRecents="true"
             android:excludeFromRecents="true"
-            android:label="@string/app_name"
-            android:taskAffinity=".LaunchVPN"
-            android:theme="@style/blinkt.dialog"
-            android:exported="true"/>
+            android:launchMode="singleInstance"
+            android:taskAffinity="de.blinkt.openvpn.LaunchVPN"
+            android:theme="@style/Theme.AIOVPN.Dark.Dialog" />
 
-        <!-- Core VPN service (system must bind to it) -->
+        <!-- 🧠 Core VPN service (specialUse subtype=vpn) -->
         <service
-            android:name=".core.OpenVPNService"
-            android:exported="true"
+            android:name="de.blinkt.openvpn.core.OpenVPNService"
+            android:exported="false"
             android:permission="android.permission.BIND_VPN_SERVICE"
             android:foregroundServiceType="specialUse"
             android:process=":openvpn">
             <intent-filter>
-                <action android:name="android.net.VpnService"/>
+                <action android:name="android.net.VpnService" />
             </intent-filter>
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="vpn"/>
+                android:value="vpn" />
         </service>
 
-        <!-- Optional public API service (leave exported=true only if you expose the API) -->
+        <!-- 🔒 Public API service (internal only) -->
         <service
-            android:name=".api.ExternalOpenVPNService"
-            android:exported="true"
-            android:process=":openvpn"
-            tools:ignore="ExportedService">
+            android:name="de.blinkt.openvpn.api.ExternalOpenVPNService"
+            android:exported="false"
+            android:process=":openvpn">
             <intent-filter>
-                <action android:name="de.blinkt.openvpn.api.IOpenVPNAPIService"/>
+                <action android:name="de.blinkt.openvpn.api.IOpenVPNAPIService" />
             </intent-filter>
         </service>
 
-        <!-- Status service (internal) -->
+        <!-- 📡 Status updater -->
         <service
-            android:name=".core.OpenVPNStatusService"
+            android:name="de.blinkt.openvpn.core.OpenVPNStatusService"
             android:exported="false"
-            android:process=":openvpn"/>
+            android:process=":openvpn" />
 
-        <!-- Boot/lifecycle -->
+        <!-- 🔁 Boot & update receiver -->
         <receiver
-            android:name=".OnBootReceiver"
+            android:name="de.blinkt.openvpn.OnBootReceiver"
             android:exported="true">
             <intent-filter android:priority="999">
-                <action android:name="android.intent.action.BOOT_COMPLETED"/>
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
 
+        <!-- 🩺 Keep-alive job -->
         <service
-            android:name=".core.keepVPNAlive"
-            android:exported="true"
+            android:name="de.blinkt.openvpn.core.keepVPNAlive"
             android:permission="android.permission.BIND_JOB_SERVICE"
-            android:process=":openvpn"/>
+            android:process=":openvpn"
+            android:exported="false" />
 
-        <!-- Remote action/dialogs -->
+        <!-- 🪟 Remote actions -->
         <activity
-            android:name=".api.RemoteAction"
+            android:name="de.blinkt.openvpn.api.RemoteAction"
+            android:exported="false"
             android:launchMode="singleInstance"
             android:autoRemoveFromRecents="true"
             android:excludeFromRecents="true"
-            android:taskAffinity=".LaunchVPN"
-            android:theme="@style/blinkt.dialog"
+            android:taskAffinity="de.blinkt.openvpn.LaunchVPN"
             android:noHistory="true"
-            android:exported="false"/>
+            android:theme="@style/Theme.AIOVPN.Dark.Dialog" />
 
-        <activity
-            android:name=".api.GrantPermissionsActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-            </intent-filter>
-        </activity>
+        <activity android:name="de.blinkt.openvpn.api.GrantPermissionsActivity"
+            android:exported="false" />
 
-        <activity
-            android:name=".api.ConfirmDialog"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-            </intent-filter>
-        </activity>
+        <activity android:name="de.blinkt.openvpn.api.ConfirmDialog"
+            android:exported="false" />
 
-        <!-- Quick action aliases -->
+        <!-- ⚡ Internal shortcuts (keep non-exported for safety) -->
         <activity-alias
-            android:name=".api.ConnectVPN"
-            android:exported="true"
-            android:targetActivity=".api.RemoteAction"/>
-        <activity-alias
-            android:name=".api.DisconnectVPN"
-            android:exported="true"
-            android:targetActivity=".api.RemoteAction"/>
-        <activity-alias
-            android:name=".api.PauseVPN"
-            android:exported="true"
-            android:targetActivity=".api.RemoteAction"/>
-        <activity-alias
-            android:name=".api.ResumeVPN"
-            android:exported="true"
-            android:targetActivity=".api.RemoteAction"/>
-
-        <!-- Optional FileProvider (only if you share files) -->
-        <!--
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileprovider"
+            android:name="de.blinkt.openvpn.api.ConnectVPN"
             android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths"/>
-        </provider>
-        -->
+            android:targetActivity="de.blinkt.openvpn.api.RemoteAction" />
+        <activity-alias
+            android:name="de.blinkt.openvpn.api.DisconnectVPN"
+            android:exported="false"
+            android:targetActivity="de.blinkt.openvpn.api.RemoteAction" />
+        <activity-alias
+            android:name="de.blinkt.openvpn.api.PauseVPN"
+            android:exported="false"
+            android:targetActivity="de.blinkt.openvpn.api.RemoteAction" />
+        <activity-alias
+            android:name="de.blinkt.openvpn.api.ResumeVPN"
+            android:exported="false"
+            android:targetActivity="de.blinkt.openvpn.api.RemoteAction" />
+
     </application>
 </manifest>

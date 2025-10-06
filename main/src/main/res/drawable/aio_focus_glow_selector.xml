@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Focus / pressed = add subtle neon outline -->
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/aio_card_bg_dark"/>
+            <corners android:radius="18dp"/>
+            <stroke android:width="1dp" android:color="@color/aio_glow_purple"/>
+        </shape>
+    </item>
+    <item android:state_pressed="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/aio_card_bg_dark"/>
+            <corners android:radius="18dp"/>
+            <stroke android:width="1dp" android:color="@color/aio_glow_pink"/>
+        </shape>
+    </item>
+    <!-- Default -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/aio_card_bg_dark"/>
+            <corners android:radius="18dp"/>
+        </shape>
+    </item>
+</selector>

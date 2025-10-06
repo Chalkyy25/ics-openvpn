@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- App theme -->
+    <style name="Theme.AIOVPN.Dark" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <!-- Brand -->
+        <item name="colorPrimary">@color/aio_primary</item>
+        <item name="colorPrimaryDark">@color/aio_primary_dark</item>
+        <item name="colorAccent">@color/aio_secondary</item>
+
+        <!-- Surfaces / background -->
+        <item name="android:colorBackground">@color/aio_bg_dark</item>
+        <item name="colorSurface">@color/aio_surface</item>
+        <item name="colorOnSurface">@color/aio_text</item>
+
+        <!-- Text -->
+        <item name="android:textColor">@color/aio_text</item>
+
+        <!-- System bars -->
+        <item name="android:statusBarColor">@color/aio_bg_dark</item>
+        <item name="android:navigationBarColor">@color/aio_bg_dark</item>
+
+        <!-- Ripple / controls -->
+        <item name="colorControlHighlight">@color/aio_glow_purple</item>
+        <item name="android:colorControlHighlight">@color/aio_glow_purple</item>
+
+        <!-- Default widgets -->
+        <item name="buttonStyle">@style/Widget.AIO.Button.Primary</item>
+        <item name="editTextStyle">@style/Widget.AIO.Input</item>
+        <item name="cardViewStyle">@style/Widget.AIO.Card</item>
+    </style>
+
+    <!-- Dialog theme (use in manifest instead of blinkt.dialog) -->
+    <style name="Theme.AIOVPN.Dark.Dialog" parent="Theme.AppCompat.Dialog">
+        <item name="android:windowBackground">@color/aio_bg_dark_alt</item>
+        <item name="android:colorBackground">@color/aio_bg_dark_alt</item>
+        <item name="android:textColor">@color/aio_text</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:backgroundDimAmount">0.6</item>
+        <item name="android:windowMinWidthMajor">90%</item>
+        <item name="android:windowMinWidthMinor">90%</item>
+    </style>
+
+    <!-- Buttons -->
+    <style name="Widget.AIO.Button.Primary" parent="Widget.AppCompat.Button">
+        <item name="android:textColor">@color/aio_button_text</item>
+        <item name="android:backgroundTint">@color/aio_button_bg</item>
+        <item name="android:minHeight">44dp</item>
+        <item name="android:insetLeft">0dp</item>
+        <item name="android:insetRight">0dp</item>
+        <item name="android:paddingLeft">16dp</item>
+        <item name="android:paddingRight">16dp</item>
+    </style>
+
+    <style name="Widget.AIO.Button.Outlined" parent="Widget.AppCompat.Button.Borderless.Colored">
+        <item name="android:textColor">@color/aio_primary</item>
+        <item name="android:background">@drawable/aio_btn_outlined</item>
+    </style>
+
+    <style name="Widget.AIO.Button.Danger" parent="Widget.AppCompat.Button">
+        <item name="android:textColor">@color/aio_button_text</item>
+        <item name="android:backgroundTint">@color/aio_error</item>
+    </style>
+
+    <!-- Inputs -->
+    <style name="Widget.AIO.Input" parent="Widget.AppCompat.EditText">
+        <item name="android:textColor">@color/aio_text</item>
+        <item name="android:textColorHint">@color/aio_text_muted</item>
+        <item name="android:background">@drawable/aio_input_bg</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:paddingLeft">14dp</item>
+        <item name="android:paddingRight">14dp</item>
+    </style>
+
+    <!-- Cards -->
+    <style name="Widget.AIO.Card" parent="CardView">
+        <item name="cardBackgroundColor">@color/aio_surface</item>
+        <item name="cardCornerRadius">14dp</item>
+        <item name="cardUseCompatPadding">true</item>
+        <item name="cardElevation">4dp</item>
+    </style>
+
+    <!-- Text appearances -->
+    <style name="Text.AIO.Title" parent="TextAppearance.AppCompat.Headline">
+        <item name="android:textColor">@color/aio_text</item>
+    </style>
+
+    <style name="Text.AIO.Subtitle" parent="TextAppearance.AppCompat.Subhead">
+        <item name="android:textColor">@color/aio_text_muted</item>
+    </style>
+
+    <style name="Text.AIO.Success" parent="TextAppearance.AppCompat.Body1">
+        <item name="android:textColor">@color/aio_success</item>
+    </style>
+
+    <style name="Text.AIO.Danger" parent="TextAppearance.AppCompat.Body1">
+        <item name="android:textColor">@color/aio_error</item>
+    </style>
+
+</resources>

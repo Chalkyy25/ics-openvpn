@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/aio_bg_dark">
+
+    <!-- Top brand/signal area -->
+    <FrameLayout
+        android:id="@+id/topArea"
+        android:layout_width="0dp"
+        android:layout_height="220dp"
+        android:background="@drawable/bg_connected_top"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <FrameLayout
+                android:id="@+id/powerButton"
+                android:layout_width="96dp"
+                android:layout_height="96dp"
+                android:background="@drawable/power_bg_selector"
+                android:foreground="?attr/selectableItemBackgroundBorderless">
+
+                <ImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_power"/>
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/tvConnectedTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                style="@style/Text.AIO.Title"
+                android:layout_marginTop="12dp"
+                android:text="Connected"/>
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- Middle content (scrollable) -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/scroll"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintTop_toBottomOf="@id/topArea"
+        app:layout_constraintBottom_toTopOf="@id/bottomNav"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Server card -->
+            <LinearLayout
+                android:id="@+id/cardServer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="14dp"
+                android:gravity="center_vertical"
+                android:background="@drawable/aio_card_bg_selector"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:id="@+id/tvFlag"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🇩🇪"
+                    android:textSize="20sp"
+                    android:paddingEnd="10dp"/>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvServerTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        style="@style/Text.AIO.Title"
+                        android:text="Default Location"/>
+
+                    <TextView
+                        android:id="@+id/tvServerSubtitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        style="@style/Text.AIO.Subtitle"
+                        android:text="DE • Frankfurt"/>
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:tint="@color/aio_text_muted"
+                    android:src="@android:drawable/arrow_down_float"/>
+            </LinearLayout>
+
+            <!-- Status card -->
+            <LinearLayout
+                android:id="@+id/cardStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp"
+                android:background="@drawable/aio_card_bg_selector"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:id="@+id/tvStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    style="@style/Text.AIO.Success"
+                    android:textStyle="bold"
+                    android:text="Connected"/>
+
+                <TextView
+                    android:id="@+id/tvHint"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    style="@style/Text.AIO.Subtitle"
+                    android:text="You can use other apps normally"/>
+            </LinearLayout>
+
+            <!-- Stats card -->
+            <LinearLayout
+                android:id="@+id/cardStats"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="14dp"
+                android:background="@drawable/aio_card_bg_selector">
+
+                <TextView
+                    android:id="@+id/tvTimer"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="00:00:00"
+                    android:textColor="@color/aio_text"/>
+
+                <TextView
+                    android:id="@+id/tvBytesIn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="DL 0 KB"
+                    android:textColor="@color/aio_text_muted"
+                    android:paddingEnd="12dp"/>
+
+                <TextView
+                    android:id="@+id/tvBytesOut"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="UL 0 KB"
+                    android:textColor="@color/aio_text_muted"/>
+            </LinearLayout>
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- Bottom nav (fixed) -->
+    <LinearLayout
+        android:id="@+id/bottomNav"
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        android:background="@color/aio_panel"
+        android:orientation="horizontal"
+        android:gravity="center"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:id="@+id/navVpn"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="VPN"
+            android:textColor="@color/aio_text"/>
+
+        <TextView
+            android:id="@+id/navMap"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="Map"
+            android:textColor="@color/aio_text_muted"/>
+
+        <TextView
+            android:id="@+id/navOptions"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="Options"
+            android:textColor="@color/aio_text_muted"/>
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

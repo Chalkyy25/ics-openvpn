@@ -1,260 +1,390 @@
-// MainActivity.java
 package de.blinkt.openvpn.ui;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.VpnService;
 import android.os.Bundle;
-import android.util.Log;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
-import android.widget.Button;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
 
 import java.io.StringReader;
+import java.util.Locale;
 
-import de.blinkt.openvpn.LaunchVPN;
 import de.blinkt.openvpn.R;
 import de.blinkt.openvpn.VpnProfile;
 import de.blinkt.openvpn.api.ApiService;
 import de.blinkt.openvpn.api.RetrofitClient;
 import de.blinkt.openvpn.core.ConfigParser;
+import de.blinkt.openvpn.core.IOpenVPNServiceInternal;
+import de.blinkt.openvpn.core.OpenVPNService;
 import de.blinkt.openvpn.core.ProfileManager;
-import de.blinkt.openvpn.core.VpnStatus;
+import de.blinkt.openvpn.util.LocationFormat;
 import de.blinkt.openvpn.util.Prefs;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class MainActivity extends Activity {
+public class MainActivity extends AppCompatActivity {
 
-    private static final String TAG = "AIOVPN";
-    private static final int REQ_PICK_SERVER = 2001;
-    private static final int REQ_VPN_PREP    = 3001;
+    // UI
+    private View powerButton, cardServer;
+    private TextView tvConnectedTitle, tvStatus, tvHint, tvTimer, tvBytesIn, tvBytesOut;
+    private TextView tvServerTitle, tvServerSubtitle, tvFlag;
 
-    private TextView tvServer;
-    private Button btnConnect, btnPickServer, btnLogout, btnLogs;
-    private ProgressBar progress;
+    // State
+    private long connectedSince = 0L;
+    private final Handler h = new Handler(Looper.getMainLooper());
+    private boolean connectingOrStopping = false;
 
-    private Integer serverId = null;
-    private String  serverName = null;
-    private String  token;
-    private int     userId;
+    // Auth / selection
+    private String token;
+    private int userId;
+    private Integer serverId;
+    private String serverName;
 
-    private String pendingProfileUUID; // used after VPN permission grant
+    // Intents
+    private static final int REQ_PICK_SERVER = 501;
+    private static final int REQ_VPN_PREP = 3001;
+    private String pendingProfileId;
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    // ---- 1s timer for session clock ----
+    private final Runnable tick = new Runnable() {
+        @Override public void run() {
+            if (connectedSince > 0) {
+                long s = (System.currentTimeMillis() - connectedSince) / 1000;
+                long hH = s / 3600; s %= 3600; long m = s / 60; s %= 60;
+                tvTimer.setText(String.format(Locale.US, "%02d:%02d:%02d", hH, m, s));
+            }
+            h.postDelayed(this, 1000);
+        }
+    };
+
+    // ---- Lifecycle ----
+    @Override protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_connected);
 
-        // (Your fork's VpnStatus doesn't expose verbosity toggles; just log a marker.)
-        try { VpnStatus.logInfo("AIOVPN: app started"); } catch (Throwable ignore) {}
+        // Find views
+        powerButton      = findViewById(R.id.powerButton);
+        cardServer       = findViewById(R.id.cardServer);
+        tvConnectedTitle = findViewById(R.id.tvConnectedTitle);
+        tvStatus         = findViewById(R.id.tvStatus);
+        tvHint           = findViewById(R.id.tvHint);
+        tvTimer          = findViewById(R.id.tvTimer);
+        tvBytesIn        = findViewById(R.id.tvBytesIn);
+        tvBytesOut       = findViewById(R.id.tvBytesOut);
+        tvServerTitle    = findViewById(R.id.tvServerTitle);
+        tvServerSubtitle = findViewById(R.id.tvServerSubtitle);
+        tvFlag           = findViewById(R.id.tvFlag);
 
-        // Bind views
-        tvServer      = req(R.id.tvServer);
-        btnConnect    = req(R.id.btnConnect);
-        btnPickServer = req(R.id.btnPickServer);
-        btnLogout     = req(R.id.btnLogout);
-        btnLogs       = req(R.id.btnLogs);
-        progress      = req(R.id.progress);
+        // Load persisted auth + last server
+        token      = Prefs.getToken(this);
+        userId     = Prefs.getUserId(this);
+        serverId   = Prefs.getServerId(this);
+        serverName = Prefs.getServerName(this);
 
-        token  = Prefs.getToken(this);
-        userId = Prefs.getUserId(this);
+        // Apply server title/subtitle/flag safely
+        if (serverName != null && !serverName.isEmpty()) {
+            tvServerTitle.setText(serverName);
+            tvServerSubtitle.setText(LocationFormat.formatSubtitle(serverName));
+            tvFlag.setText(LocationFormat.flagFromLabel(serverName));
+        } else {
+            tvServerSubtitle.setText("Tap to choose");
+            tvFlag.setText("🏳️");
+        }
 
-        if (token == null || token.isEmpty()) {
-            Log.d(TAG, "No token; redirecting to LoginActivity");
-            startActivity(new Intent(this, LoginActivity.class));
-            finish();
+        powerButton.setOnClickListener(v -> onPowerTapped());
+        cardServer.setOnClickListener(v ->
+                startActivityForResult(new Intent(this, ServerPickerActivity.class), REQ_PICK_SERVER));
+
+        findViewById(R.id.navVpn).setOnClickListener(v -> {});
+        findViewById(R.id.navMap).setOnClickListener(v -> Toast.makeText(this, "Map coming soon", Toast.LENGTH_SHORT).show());
+        findViewById(R.id.navOptions).setOnClickListener(v -> Toast.makeText(this, "Options coming soon", Toast.LENGTH_SHORT).show());
+
+        setDisconnectedUi(); // initial visual; we’ll sync to real state onResume()
+    }
+
+    // ---- Power Button ----
+    private void onPowerTapped() {
+        if (connectingOrStopping) return;
+
+        if ("Connected".contentEquals(tvStatus.getText())) {
+            // Disconnect
+            setButtonsEnabled(false);
+            connectingOrStopping = true;
+            requestDisconnectReliable(() -> {
+                setDisconnectedUi();
+                connectingOrStopping = false;
+                setButtonsEnabled(true);
+            });
             return;
         }
 
-        serverId   = Prefs.getServerId(this);
-        serverName = Prefs.getServerName(this);
-        updateServerText();
-
-        btnPickServer.setOnClickListener(v ->
-                startActivityForResult(new Intent(this, ServerPickerActivity.class), REQ_PICK_SERVER)
-        );
-
-        btnConnect.setOnClickListener(v -> {
-            if (serverId == null || serverId <= 0) {
-                toast("Pick a server first");
-                return;
-            }
-            fetchAndConnect();
-        });
-
-        btnLogout.setOnClickListener(v -> {
-            Prefs.clearAll(this);
+        // Connect
+        if (token == null || token.isEmpty()) {
+            Toast.makeText(this, "Please log in", Toast.LENGTH_SHORT).show();
             startActivity(new Intent(this, LoginActivity.class));
-            finish();
-        });
-
-        btnLogs.setOnClickListener(v -> openLogWindow());
-    }
-
-    private void setLoading(boolean loading) {
-        progress.setVisibility(loading ? View.VISIBLE : View.GONE);
-        btnConnect.setEnabled(!loading);
-        btnPickServer.setEnabled(!loading);
-        btnLogout.setEnabled(!loading);
-        btnLogs.setEnabled(true);
-    }
-
-    private void updateServerText() {
-        if (serverId != null && serverId > 0 && serverName != null && !serverName.isEmpty()) {
-            tvServer.setText("Server: " + serverName);
-        } else {
-            tvServer.setText("Server: (none)");
+            return;
         }
+        if (serverId == null || serverId <= 0) {
+            Toast.makeText(this, "Pick a server first", Toast.LENGTH_SHORT).show();
+            startActivityForResult(new Intent(this, ServerPickerActivity.class), REQ_PICK_SERVER);
+            return;
+        }
+
+        connectingOrStopping = true;
+        setButtonsEnabled(false);
+        setConnectingUi();
+        fetchAndConnect(serverId, serverName);
     }
 
-    private void fetchAndConnect() {
-        setLoading(true);
-        Log.d(TAG, "Fetching .ovpn for userId=" + userId + " serverId=" + serverId);
+    private void setButtonsEnabled(boolean enabled) {
+        if (powerButton != null) powerButton.setEnabled(enabled);
+        if (cardServer  != null) cardServer.setEnabled(enabled);
+    }
 
+    // ---- Reliable disconnect ----
+    private void requestDisconnectReliable(@Nullable Runnable then) {
+        try { // A) Legacy activity
+            Intent i = new Intent(this, de.blinkt.openvpn.activities.DisconnectVPN.class);
+            i.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION
+                    | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+                    | Intent.FLAG_ACTIVITY_NO_USER_ACTION);
+            startActivity(i);
+        } catch (Throwable ignored) { }
+
+        try { // B) Binder stop
+            Intent svc = new Intent(this, OpenVPNService.class);
+            svc.setAction(OpenVPNService.START_SERVICE);
+            bindService(svc, new android.content.ServiceConnection() {
+                @Override public void onServiceConnected(android.content.ComponentName n, android.os.IBinder b) {
+                    try {
+                        IOpenVPNServiceInternal m = IOpenVPNServiceInternal.Stub.asInterface(b);
+                        if (m != null) {
+                            try { m.stopVPN(true); } catch (Throwable t) { m.stopVPN(false); }
+                        }
+                    } catch (Throwable ignored2) { }
+                    try { unbindService(this); } catch (Throwable ignored3) { }
+                }
+                @Override public void onServiceDisconnected(android.content.ComponentName n) { }
+            }, Context.BIND_AUTO_CREATE);
+        } catch (Throwable ignored) { }
+
+        try { // C) Best-effort broadcast
+            Intent stop = new Intent(this, OpenVPNService.class);
+            stop.setAction("de.blinkt.openvpn.STOP");
+            startService(stop);
+        } catch (Throwable ignored) { }
+
+        ProfileManager.setConntectedVpnProfileDisconnected(this);
+
+        // Poll until VPN is really down
+        final int[] tries = {0};
+        Runnable poll = new Runnable() {
+            @Override public void run() {
+                if (!isSystemVpnActive() || tries[0] >= 10) {
+                    if (then == null) setDisconnectedUi(); else then.run();
+                } else {
+                    tries[0]++;
+                    h.postDelayed(this, 300);
+                }
+            }
+        };
+        h.postDelayed(poll, 300);
+    }
+
+    // ---- Connect flow ----
+    private void fetchAndConnect(int sid, String sname) {
         ApiService api = RetrofitClient.service();
-        api.getOvpn("Bearer " + token, userId, serverId).enqueue(new Callback<ResponseBody>() {
-            @Override
-            public void onResponse(@NonNull Call<ResponseBody> call, @NonNull Response<ResponseBody> resp) {
+        api.getOvpn("Bearer " + token, userId, sid).enqueue(new Callback<ResponseBody>() {
+            @Override public void onResponse(@NonNull Call<ResponseBody> call, @NonNull Response<ResponseBody> resp) {
                 try {
                     if (!resp.isSuccessful() || resp.body() == null) {
-                        String msg = "Fetch .ovpn failed (HTTP " + resp.code() + ")";
-                        Log.e(TAG, msg);
-                        toast(msg);
-                        return;
+                        Toast.makeText(MainActivity.this, "Failed to fetch config (" + resp.code() + ")", Toast.LENGTH_SHORT).show();
+                        setDisconnectedUi(); connectingOrStopping = false; setButtonsEnabled(true); return;
                     }
                     String ovpn = resp.body().string();
                     if (ovpn == null || ovpn.trim().isEmpty()) {
-                        Log.e(TAG, "Server returned empty .ovpn");
-                        toast("Server returned empty .ovpn");
-                        return;
+                        Toast.makeText(MainActivity.this, "Empty config", Toast.LENGTH_SHORT).show();
+                        setDisconnectedUi(); connectingOrStopping = false; setButtonsEnabled(true); return;
                     }
 
-                    Log.d(TAG, "OVPN bytes=" + ovpn.length()
-                            + " hasCA=" + ovpn.contains("<ca>")
-                            + " hasTA=" + ovpn.contains("<tls-auth>")
-                            + " hasKeyDir=" + ovpn.contains("key-direction")
-                            + " hasAuthUserPass=" + ovpn.contains("auth-user-pass"));
+                    // Ensure UI creds + UDP exit notify
+                    ovpn = ovpn.replaceAll("(?im)^\\s*auth-user-pass\\s+\\S+\\s*$", "auth-user-pass");
+                    String lower = ovpn.toLowerCase(Locale.US);
+                    if (lower.contains("proto udp") && !lower.matches("(?s).*\\bexplicit-exit-notify\\b.*")) {
+                        ovpn += "\nexplicit-exit-notify 3\n";
+                    }
 
-                    startVpnWithConfig(ovpn);
+                    startVpnWithConfig(ovpn, sname);
                 } catch (Exception e) {
-                    Log.e(TAG, "Config parse error", e);
-                    toast("Config parse error: " + e.getMessage());
-                } finally {
-                    setLoading(false);
+                    Toast.makeText(MainActivity.this, "Parse error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    setDisconnectedUi(); connectingOrStopping = false; setButtonsEnabled(true);
                 }
             }
-
-            @Override
-            public void onFailure(@NonNull Call<ResponseBody> call, @NonNull Throwable t) {
-                Log.e(TAG, "Network error fetching .ovpn", t);
-                toast(t.getMessage() == null ? "Network error" : t.getMessage());
-                setLoading(false);
+            @Override public void onFailure(@NonNull Call<ResponseBody> call, @NonNull Throwable t) {
+                Toast.makeText(MainActivity.this, t.getMessage() == null ? "Network error" : t.getMessage(), Toast.LENGTH_SHORT).show();
+                setDisconnectedUi(); connectingOrStopping = false; setButtonsEnabled(true);
             }
         });
     }
 
-    private void startVpnWithConfig(String ovpn) throws Exception {
-        Log.d(TAG, "Parsing .ovpn into VpnProfile…");
-
+    private void startVpnWithConfig(String ovpn, String sname) throws Exception {
         ConfigParser cp = new ConfigParser();
         cp.parseConfig(new StringReader(ovpn));
         VpnProfile profile = cp.convertProfile();
         if (profile == null) {
-            Log.e(TAG, "convertProfile() returned null");
-            toast("Invalid VPN profile");
-            return;
+            Toast.makeText(this, "Invalid profile", Toast.LENGTH_SHORT).show();
+            setDisconnectedUi(); connectingOrStopping = false; setButtonsEnabled(true); return;
         }
 
-        profile.mName = "AIO • " + (serverName != null && !serverName.isEmpty() ? serverName : "Profile");
-        Log.d(TAG, "Profile parsed. Name=" + profile.mName);
+        profile.mName = "AIO • " + (sname == null ? "Profile" : sname);
 
         try {
             profile.mUsername = Prefs.getVpnUser(this);
             profile.mPassword = Prefs.getVpnPass(this);
-            try {
-                profile.mAuthenticationType = de.blinkt.openvpn.VpnProfile.TYPE_USERPASS;
-            } catch (Throwable ignored) {}
-            Log.d(TAG, "Injected auth creds (username set? " + (profile.mUsername != null) + ")");
-        } catch (Throwable ignore) {
-            Log.w(TAG, "Could not inject username/password into profile");
-        }
+            try { profile.mAuthenticationType = de.blinkt.openvpn.VpnProfile.TYPE_USERPASS; } catch (Throwable ignored) {}
+        } catch (Throwable ignored) {}
 
         ProfileManager pm = ProfileManager.getInstance(this);
         pm.addProfile(profile);
-        pm.saveProfile(this, profile);
+        ProfileManager.saveProfile(this, profile);
         pm.saveProfileList(this);
-        String uuid = profile.getUUID().toString();
-        Log.d(TAG, "Saved profile UUID=" + uuid);
+
+        pendingProfileId = profile.getUUID().toString();
 
         Intent prep = VpnService.prepare(this);
-        Log.d(TAG, "VpnService.prepare -> " + (prep == null ? "granted" : "needs dialog"));
-        if (prep != null) {
-            pendingProfileUUID = uuid;
-            startActivityForResult(prep, REQ_VPN_PREP);
-            return;
-        }
-        launchVpn(uuid);
+        if (prep != null) startActivityForResult(prep, REQ_VPN_PREP);
+        else startVpnNow(profile);
     }
 
-    private void launchVpn(String uuid) {
-        Log.d(TAG, "Launching LaunchVPN with UUID=" + uuid);
-        Intent i = new Intent(this, LaunchVPN.class);
-        i.putExtra(LaunchVPN.EXTRA_KEY, uuid);
-        startActivity(i);
-        toast("Connecting…");
+    private void startVpnNow(VpnProfile profile) {
+        de.blinkt.openvpn.core.VPNLaunchHelper.startOpenVpn(profile, getBaseContext(), "ui", false);
+        connectedSince = System.currentTimeMillis();
+        setConnectedUi();
+        connectingOrStopping = false;
+        setButtonsEnabled(true);
     }
 
-    private void openLogWindow() {
+    private void switchServer(int newServerId, String newServerName) {
+        if (connectingOrStopping) return;
+        connectingOrStopping = true;
+        setButtonsEnabled(false);
+
+        // Update selection + UI
+        serverId = newServerId;
+        serverName = newServerName;
+        tvServerTitle.setText(serverName);
+        tvServerSubtitle.setText(LocationFormat.formatSubtitle(serverName));
+        tvFlag.setText(LocationFormat.flagFromLabel(serverName));
+        Prefs.setServer(this, serverId, serverName);
+
+        setConnectingUi();
+        requestDisconnectReliable(() -> fetchAndConnect(serverId, serverName));
+    }
+
+    // ---- UI helpers ----
+    private void setConnectedUi() {
+        tvConnectedTitle.setText("Connected");
+        tvStatus.setText("Connected");
+        tvHint.setText("You can use other apps normally");
+        if (connectedSince == 0L) connectedSince = System.currentTimeMillis();
+    }
+
+    private void setConnectingUi() {
+        tvConnectedTitle.setText("Connecting…");
+        tvStatus.setText("Connecting…");
+        tvHint.setText("Establishing secure tunnel");
+    }
+
+    private void setDisconnectedUi() {
+        tvConnectedTitle.setText("Disconnected");
+        tvStatus.setText("Disconnected");
+        tvHint.setText("Tap to connect");
+        connectedSince = 0L;
+        tvTimer.setText("00:00:00");
+        tvBytesIn.setText("DL 0 KB");
+        tvBytesOut.setText("UL 0 KB");
+    }
+
+    // ---- System VPN state reflectors ----
+    private boolean isSystemVpnActive() {
         try {
-            Class<?> logWin = Class.forName("de.blinkt.openvpn.activities.LogWindow");
-            startActivity(new Intent(this, logWin));
-        } catch (ClassNotFoundException e) {
-            toast("Log window not in this build. Use MatLog or adb logcat.");
-            Log.i(TAG, "Tip: adb logcat -v time | grep -i \"OpenVPN\\|AIOVPN\\|VpnService\\|AUTH\\|TLS\"");
-        }
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+            if (cm == null) return false;
+            for (Network n : cm.getAllNetworks()) {
+                NetworkCapabilities nc = cm.getNetworkCapabilities(n);
+                if (nc != null && nc.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) return true;
+            }
+        } catch (Throwable ignored) {}
+        return false;
+    }
+
+    private void syncUiWithSystemVpn() {
+        if (isSystemVpnActive()) setConnectedUi(); else setDisconnectedUi();
+    }
+
+    // ---- Lifecycle ----
+    @Override protected void onResume() {
+        super.onResume();
+        h.post(tick);
+        syncUiWithSystemVpn();
+    }
+
+    @Override protected void onPause()  {
+        super.onPause();
+        h.removeCallbacks(tick);
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode == REQ_PICK_SERVER && resultCode == RESULT_OK && data != null) {
-            serverId   = data.getIntExtra("server_id", 0);
-            serverName = data.getStringExtra("server_name");
-            Prefs.setServer(this, serverId, serverName);
-            updateServerText();
-            Log.d(TAG, "Server selected id=" + serverId + " name=" + serverName);
+        if (requestCode == REQ_PICK_SERVER && resultCode == Activity.RESULT_OK && data != null) {
+            int sid = data.getIntExtra("server_id", 0);
+            String sname = data.getStringExtra("server_name");
+            if (sid > 0 && sname != null) {
+                // Update UI immediately
+                tvServerTitle.setText(sname);
+                tvServerSubtitle.setText(LocationFormat.formatSubtitle(sname));
+                tvFlag.setText(LocationFormat.flagFromLabel(sname));
+                // Switch (disconnect then reconnect)
+                switchServer(sid, sname);
+            } else {
+                Toast.makeText(this, "Invalid server selection", Toast.LENGTH_SHORT).show();
+            }
             return;
         }
 
         if (requestCode == REQ_VPN_PREP) {
-            Log.d(TAG, "VPN permission result=" + (resultCode == RESULT_OK ? "OK" : "DENIED"));
-            if (resultCode == RESULT_OK && pendingProfileUUID != null) {
-                launchVpn(pendingProfileUUID);
+            if (resultCode == Activity.RESULT_OK && pendingProfileId != null) {
+                VpnProfile p = ProfileManager.get(this, pendingProfileId);
+                if (p != null) startVpnNow(p);
+                else {
+                    setDisconnectedUi();
+                    Toast.makeText(this, "Profile not found", Toast.LENGTH_SHORT).show();
+                    connectingOrStopping = false;
+                    setButtonsEnabled(true);
+                }
             } else {
-                toast("VPN permission denied");
+                Toast.makeText(this, "VPN permission denied", Toast.LENGTH_SHORT).show();
+                setDisconnectedUi();
+                connectingOrStopping = false;
+                setButtonsEnabled(true);
             }
-            pendingProfileUUID = null;
+            pendingProfileId = null;
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T> T req(int id) {
-        T v = (T) findViewById(id);
-        if (v == null) {
-            throw new IllegalStateException("Missing view id in activity_main: " + getResources().getResourceName(id));
-        }
-        return v;
-    }
-
-    private void toast(String s) {
-        Toast.makeText(this, s, Toast.LENGTH_SHORT).show();
     }
 }
